@@ -15,8 +15,26 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import include, path
+from rest_framework import routers
+from pollsAPI import views as viewsAPI
+from polls import views
 
+router = routers.DefaultRouter()
+router.register(r'users', viewsAPI.UserViewSet)
+router.register(r'groups', viewsAPI.GroupViewSet)
+router.register('polls', viewsAPI.PollViewSet, 'question')
+router.register(r'choice', viewsAPI.ChoiceViewSet, 'choice')
+
+
+# Wire up our API using automatic URL routing.
+# Additionally, we include login URLs for the browsable API.
 urlpatterns = [
+    path("", views.IndexView.as_view(), name="index"),
+    path("<int:question_id>/", views.PollView.as_view(), name="detail"),
+    #path("<int:pk>/results/", views.ResultsView.as_view(), name="results"),
+    path("<int:question_id>/vote/", views.vote, name="vote"),
+    path('api/', include(router.urls)),
     path('admin/', admin.site.urls),
+    path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
 ]

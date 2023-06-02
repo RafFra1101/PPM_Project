@@ -1,0 +1,17 @@
+{% with info=choices.info scelte=choices.scelte %}
+<form action="{% url 'vote' info.id %}" method="post">
+
+
+    {% csrf_token %}
+    <fieldset>
+        <legend><h1>{{ info.testo }}</h1></legend>
+        
+        {% if error_message %}<p><strong>{{ error_message }}</strong></p>{% endif %}
+        {% for choice in scelte %}
+            <input type="radio" name="choice" id="choice{{ forloop.counter }}" value="{{ choice.id }}">
+            <label for="choice{{ forloop.counter }}">{{ choice.testo }}</label><br>
+        {% endfor %}
+    </fieldset>
+    <input type="submit" value="Vote">
+</form>
+{% endwith %}
