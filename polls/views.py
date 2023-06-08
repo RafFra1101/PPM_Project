@@ -1,20 +1,23 @@
 
 from typing import Any
 from django.db.models.query import QuerySet
-from django.shortcuts import render, get_object_or_404
-from django.http import HttpResponseRedirect
+from django.shortcuts import render, get_object_or_404, redirect
+from django.http import HttpResponse, HttpResponseRedirect
 from django.views import generic
-from django.urls import reverse
+from django.urls import reverse, get_resolver
 from django.utils import timezone
+from django.contrib import messages
+from django.contrib.auth import login
+from .forms import RegisterForm, LoginForm
 import requests, logging
 
 # Create your views here.
 class IndexView(generic.ListView):
     template_name = "polls/index.html"
-    context_object_name = "latest_question_list"
+    context_object_name = "latest_poll_list"
 
     def get_queryset(self):
-        """Return the last five published questions (not including those set to be published in the future)."""
+        """Return the last five published polls (not including those set to be published in the future)."""
         response = requests.get('http://127.0.0.1:8000/api/polls/')  # Sostituisci l'URL con l'API reale che desideri chiamare
         data = response.json()  # Se la risposta è in formato JSON
         output = []
@@ -29,76 +32,64 @@ class IndexView(generic.ListView):
         return output
     
 
-class PollView(generic.ListView):
-    template_name = "polls/detail.html"
-    context_object_name = "choices"
-
-    def get_queryset(self):
-        """Return the choices of the poll"""
-        url = 'http://127.0.0.1:8000/api/polls/'+str(self.kwargs['question_id'])+'/choices/'
-        response = requests.get(url)  # Sostituisci l'URL con l'API reale che desideri chiamare
-        data = response.json()  # Se la risposta è in formato JSON
-        response = requests.get(data[0]['URL sondaggio'])
-        
-        output = []
-        info = {
-            "testo" : response.json()['question_text'],
-            "id"    : response.json()['url'][-2],
-        }
-        scelte = []
-        for choice in data[1:]:
-            scelte.append({
-                'id' : choice['URL'][-2],
-                'testo' : choice['Testo']
-            })
-
-        output = {
-            'info' :info,
-            'scelte':scelte
-        }
-        #logging.error(data['results'][0]['url'][-2])
-        # Puoi passare i dati recuperati dall'API al contesto della vista
-        return output
+def getChoices(self):
+    """Return the choices of the poll"""
+    response = requests.get('http://127.0.0.1:8000/api/polls/'+str(self.kwargs['poll_id'])+'/choices/')
+    data = response.json()
+    url = data['URL sondaggio']
+    response = requests.get(url).json()
+    #response = requests.get("http://127.0.0.1:8000/api/polls/1").json()
+    output = []
     
+    info = {
+        "testo" : response['question_text'],
+        "id"    : url[-2],
+    }
+    data = data['scelte']
+    scelte = []
+    for choice in data:
+        scelte.append({
+            'id' : choice['URL'][-2],
+            'testo' : choice['Testo'],
+            'voti' : choice['Voti']
+        })
 
+    output = {
+        'info' :info,
+        'scelte':scelte
+    }
+    return output
 
-""" 
-class DetailView(generic.DetailView):
-    model = Question
-    template_name = "pollsAPI/detail.html"
+class PollView(generic.ListView):
+    context_object_name = "data"
+    get_queryset = getChoices
 
-    def get_queryset(self):
-        
-        Excludes any questions that aren't published yet.
-        
-        return Question.objects.filter(pub_date__lte=timezone.now())
+def vote(request, poll_id):
+    choice = request.POST["choice"].split(" / ")
+    response = requests.patch("http://127.0.0.1:8000/api/choice/"+choice[0]+"/", data={'votes': int(choice[1])+1})
+    return HttpResponseRedirect(reverse("results", args=(poll_id,)))
 
-class ResultsView(generic.DetailView):
-    model = Question
-    template_name = "pollsAPI/results.html"
+class RegisterView(generic.FormView):
+    template_name = "polls/register.html"
+    form_class = RegisterForm
+    success_url = "http://127.0.0.1:8000/login"
+    def form_valid(self, form):
+        out = form.register()
+        if 'error' in out:
+            messages.info(self.request, str(out['error']))
+            return redirect("http://127.0.0.1:8000/register")
+        return super().form_valid(form)
+    
+class LoginView(generic.FormView):
+    template_name = "polls/login.html"
+    form_class = LoginForm
+    success_url = "http://127.0.0.1:8000/"
 
-def vote(request, question_id):
-    question = get_object_or_404(Question, pk=question_id)
-    try:
-        selected_choice = question.choice_set.get(pk=request.POST["choice"])
-    except (KeyError, Choice.DoesNotExist):
-        # Redisplay the question voting form.
-        return render(
-            request,
-            "pollsAPI/detail.html",
-            {
-                "question": question,
-                "error_message": "You didn't select a choice.",
-            },
-        )
-    else:
-        selected_choice.votes += 1
-        selected_choice.save()
-        # Always return an HttpResponseRedirect after successfully dealing
-        # with POST data. This prevents data from being posted twice if a
-        # user hits the Back button.
-        return HttpResponseRedirect(reverse("results", args=(question.id,)))
-"""
-
-def vote(request):
-    return HttpResponseRedirect(reverse("index"))
+    def form_valid(self, form):
+        out = form.login()
+        logging.warning(out)
+        if out:
+            return super().form_valid(form)
+        else:
+            messages.info(self.request, "Credenziali errate")
+            return redirect("http://127.0.0.1:8000/login")

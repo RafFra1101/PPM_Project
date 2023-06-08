@@ -1,10 +1,11 @@
 import datetime
 from django.db import models
+from django.contrib.auth.models import User
 from django.utils import timezone
 from django.contrib import admin
 
 
-class Question(models.Model):
+class Poll(models.Model):
     question_text = models.CharField(max_length=200)
     pub_date = models.DateTimeField("date published")
     def __str__(self):
@@ -16,8 +17,9 @@ class Question(models.Model):
     
 
 class Choice(models.Model):
-    question = models.ForeignKey(Question, on_delete=models.CASCADE)
+    poll = models.ForeignKey(Poll, on_delete=models.CASCADE)
+    users = models.ManyToManyField(User)
     choice_text = models.CharField(max_length=200)
-    votes = models.IntegerField(default=0)
     def __str__(self):
         return self.choice_text
+    

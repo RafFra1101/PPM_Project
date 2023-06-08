@@ -1,17 +1,20 @@
-{% with info=choices.info scelte=choices.scelte %}
+<a href="{%url 'index' %}">Torna alla lista di sondaggi</a>
+{% with info=data.info scelte=data.scelte %}
+{% if scelte|length > 0%}
 <form action="{% url 'vote' info.id %}" method="post">
-
-
     {% csrf_token %}
     <fieldset>
         <legend><h1>{{ info.testo }}</h1></legend>
         
         {% if error_message %}<p><strong>{{ error_message }}</strong></p>{% endif %}
         {% for choice in scelte %}
-            <input type="radio" name="choice" id="choice{{ forloop.counter }}" value="{{ choice.id }}">
+            <input type="radio" name="choice" id="choice{{ forloop.counter }}" value="{{ choice.id }} / {{choice.voti}}">
             <label for="choice{{ forloop.counter }}">{{ choice.testo }}</label><br>
         {% endfor %}
     </fieldset>
     <input type="submit" value="Vote">
 </form>
+{% else %}
+<p>Nessuna scelta disponibile per il sondaggio "{{ info.testo }}"</p>
+{% endif %}
 {% endwith %}

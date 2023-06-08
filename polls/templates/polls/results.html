@@ -1,9 +1,15 @@
-<h1>{{ question.question_text }}</h1>
+{% with info=data.info scelte=data.scelte %}
+{% if scelte|length > 0%}
+<h1>{{ info.testo }}</h1>
 
 <ul>
-{% for choice in question.choice_set.all %}
-    <li>{{ choice.choice_text }} -- {{ choice.votes }} vote{{ choice.votes|pluralize }}</li>
+{% for choice in scelte %}
+    <li>{{ choice.testo }} -- {{ choice.voti }} voto{{ choice.voti|pluralize }}</li>
 {% endfor %}
 </ul>
 
-<a href="{% url 'detail' question.id %}">Vote again?</a>
+<a href="{% url 'detail' info.id %}">Vote again?</a>
+{% else %}
+<p>Nessuna scelta disponibile per il sondaggio "{{ info.testo }}"</p>
+{% endif %}
+{% endwith %}

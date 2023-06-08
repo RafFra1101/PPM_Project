@@ -1,0 +1,27 @@
+<div class="center">
+    {% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+        <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+    <form method="post" novaldiate class="card">
+        {% csrf_token %}
+      <h2 class="text-center">Create your account</h2>
+      <table>
+        {% for field in form %}
+        <tr>
+            <td>{{ field.label_tag }}</td>
+            <td>{{ field }}</td>
+            {% if field.errors %}
+                <small class="error">{{ field.errors|striptags  }}</small> 
+            {% endif %}
+        </tr>
+            
+        {% endfor %}
+        <tr><td></td><td><input type="submit" value="Login" class="btn btn-primary full-width">&nbsp;&nbsp;<a href="{% url 'register'%}">Registrati</a></td></tr>
+      </table>
+       
+      </form>
+  </div>
