@@ -40,7 +40,6 @@ urlpatterns = [
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('api/register/', viewsAPI.register, name="APIRegister"),
     path('api/login/', viewsAPI.login, name="APILogin"),
-    path('api/userInfo/<str:info>', viewsAPI.userInfo),
     path('admin/', admin.site.urls),
     
     path("<int:poll_id>/", views.PollView.as_view(template_name="polls/detail.html"), name="detail"),

@@ -5,8 +5,13 @@ from rest_framework import serializers
 from .models import Poll, Choice
 from django.utils import timezone
 from rest_framework.validators import UniqueValidator
+import logging
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
+    url = serializers.HyperlinkedIdentityField(
+        view_name='user-detail',
+        lookup_field='username'
+    )
     username = serializers.CharField(validators = [
         UniqueValidator(
             queryset=User.objects.all(),
@@ -34,22 +39,37 @@ class PollSerializer(serializers.HyperlinkedModelSerializer):
     users = serializers.HyperlinkedRelatedField(
         many=True,
         queryset=User.objects.all(),
-        view_name='user-detail'
+        view_name='user-detail',
+        lookup_field = "username"
     )
     class Meta:
         model = Poll
         fields = ['url', 'question_text', 'pub_date', 'users']
+    def update(self, instance, validated_data):
+        instance.users.set(validated_data.get('users'))
+        instance.question_text = validated_data.get('question_text', instance.question_text)
+        instance.pub_date = validated_data.get('pub_date', instance.pub_date)
+        instance.save()
+        return instance
+    def partial_update(self, instance, validated_data):
+        # Aggiorna solo i campi presenti nei dati validati
+        for field, value in validated_data.items():
+            setattr(instance, field, value)
+
+        instance.save()
+        return instance
+    
 
 class ChoiceSerializer(serializers.HyperlinkedModelSerializer):
-    poll = serializers.PrimaryKeyRelatedField(
-        queryset = Poll.objects.all(),
-        many = False
-    )
+
     class Meta:
         model = Choice
         fields = ['url', 'poll', 'choice_text', 'votes']
+
     def update(self, instance, validated_data):
-        instance.poll = validated_data.get('poll')
+        poll = validated_data.get('poll')
+        logging.warning(poll)
+        instance.poll = poll
         instance.choice_text = validated_data.get('choice_text', instance.choice_text)
         instance.votes = validated_data.get('votes', instance.votes)
         instance.save()
@@ -58,10 +78,7 @@ class ChoiceSerializer(serializers.HyperlinkedModelSerializer):
     def partial_update(self, instance, validated_data):
         # Aggiorna solo i campi presenti nei dati validati
         for field, value in validated_data.items():
-            if field == "poll":
-                instance.poll = validated_data.get('poll')
-            else :
-                setattr(instance, field, value)
+            setattr(instance, field, value)
 
         instance.save()
         return instance
