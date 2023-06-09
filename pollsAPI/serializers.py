@@ -29,12 +29,6 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
         fields = ['url', 'username', 'password', 'email']
 
 
-
-"""class GroupSerializer(serializers.HyperlinkedModelSerializer):
-    class Meta:
-        model = Group
-        fields = ['url', 'name']"""
-
 class PollSerializer(serializers.HyperlinkedModelSerializer):
     users = serializers.HyperlinkedRelatedField(
         many=True,
@@ -54,7 +48,10 @@ class PollSerializer(serializers.HyperlinkedModelSerializer):
     def partial_update(self, instance, validated_data):
         # Aggiorna solo i campi presenti nei dati validati
         for field, value in validated_data.items():
-            setattr(instance, field, value)
+            if field == 'users':
+                instance.users.set(value)
+            else:
+                setattr(instance, field, value)
 
         instance.save()
         return instance
@@ -65,15 +62,6 @@ class ChoiceSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Choice
         fields = ['url', 'poll', 'choice_text', 'votes']
-
-    def update(self, instance, validated_data):
-        poll = validated_data.get('poll')
-        logging.warning(poll)
-        instance.poll = poll
-        instance.choice_text = validated_data.get('choice_text', instance.choice_text)
-        instance.votes = validated_data.get('votes', instance.votes)
-        instance.save()
-        return instance
     
     def partial_update(self, instance, validated_data):
         # Aggiorna solo i campi presenti nei dati validati
