@@ -23,10 +23,10 @@ from .swagger import urlpatterns as swagger_urls
 
 
 router = routers.DefaultRouter()
-router.register(r'users', viewsAPI.UserViewSet, basename='user')
+router.register('user', viewsAPI.UserViewSet, basename='user')
 #router.register(r'groups', viewsAPI.GroupViewSet)
-router.register(r'polls', viewsAPI.PollViewSet, basename='poll')
-router.register(r'choice', viewsAPI.ChoiceViewSet, 'choice')
+router.register('poll', viewsAPI.PollViewSet, basename='poll')
+router.register('choice', viewsAPI.ChoiceViewSet, 'choice')
 #router.register(r'auth', viewsAPI.UserAuthentication, 'auth')
 
 

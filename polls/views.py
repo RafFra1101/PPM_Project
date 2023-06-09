@@ -11,6 +11,7 @@ from django.contrib.auth import login
 from .forms import RegisterForm, LoginForm
 import requests, logging
 
+url_api = "http://127.0.0.1:8000/"
 # Create your views here.
 class IndexView(generic.ListView):
     template_name = "polls/index.html"
@@ -18,7 +19,7 @@ class IndexView(generic.ListView):
 
     def get_queryset(self):
         """Return the last five published polls (not including those set to be published in the future)."""
-        response = requests.get('http://127.0.0.1:8000/api/polls/')  # Sostituisci l'URL con l'API reale che desideri chiamare
+        response = requests.get(url_api+reverse('poll-list'))  # Sostituisci l'URL con l'API reale che desideri chiamare
         data = response.json()  # Se la risposta è in formato JSON
         output = []
         #logging.error(data['results'][0]['url'][-2])

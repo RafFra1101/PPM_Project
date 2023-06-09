@@ -8,6 +8,7 @@ from django.contrib import admin
 class Poll(models.Model):
     question_text = models.CharField(max_length=200)
     pub_date = models.DateTimeField("date published")
+    users = models.ManyToManyField(User)
     def __str__(self):
         return self.question_text
     @admin.display(boolean = True, ordering="pub_date", description="Published recently?",)
@@ -18,8 +19,8 @@ class Poll(models.Model):
 
 class Choice(models.Model):
     poll = models.ForeignKey(Poll, on_delete=models.CASCADE)
-    users = models.ManyToManyField(User)
     choice_text = models.CharField(max_length=200)
+    votes = models.IntegerField()
     def __str__(self):
         return self.choice_text
     

@@ -112,43 +112,41 @@ class PollViewSet(viewsets.ModelViewSet):
     authentication_classes = [TokenAuthentication]
     permission_classes = [PollsPermission]
 
-    """choice_schema =openapi.Schema(type=openapi.TYPE_OBJECT, properties={
-        'testo' : openapi.Schema(type=openapi.TYPE_STRING), 
-    }, required=['testo'])"""
-    @swagger_auto_schema(method='post', request_body= openapi.Schema(
+    @swagger_auto_schema(request_body= openapi.Schema(
         type=openapi.TYPE_OBJECT,
         properties={
             'scelte' : openapi.Schema(type=openapi.TYPE_ARRAY, items = openapi.Schema(type=openapi.TYPE_STRING))
         }
     ))
-    @action(detail=True, methods=['get', 'post'])
-    def choices(self, request, pk=None):
-        """
-        Returns a list of all the choices of the given poll
-        """
+    @action(methods = ["post"], detail=True)
+    def choices(self, request):
+        poll = self.get_object()
+        for choice in request.data['scelte']:
+            Choice.objects.create(poll = poll, choice_text=choice)
+        return Response({'success' : 'Scelte inserite correttamente'},status=status.HTTP_201_CREATED)
+
+    def retrieve(self, request, *args, **kwargs):
+        super_data = super().retrieve(request, *args, **kwargs).data
+        logging.info(super_data)
         poll = self.get_object()
         choices = Choice.objects.filter(poll = poll)
-        url_poll = PollSerializer(poll, context={'request':request}).data['url']
-        if request.method == 'GET':       
-            scelte = []
-            for choice in choices:
-                serializer = ChoiceSerializer(choice, context={'request':request})
-                scelte.append({
-                    'URL': serializer.data['url'],
-                    'Testo': choice.choice_text,
-                    'Voti': serializer.data['votes'],
-                })
-            choices_data = {
-                'URL sondaggio' : url_poll,
-                'scelte' : scelte
-            }
-            return Response(choices_data)
-        else:
-            for choice in request.data['scelte']:
-                Choice.objects.create(poll = poll, choice_text=choice)
-            return Response({'success' : 'Scelte inserite correttamente'},status=status.HTTP_201_CREATED)
-        
-
+        scelte = []
+        for choice in choices:
+            serializer = ChoiceSerializer(choice, context={'request':request})
+            scelte.append({
+                'id': serializer.data['url'][-2],
+                'Testo': choice.choice_text,
+                'Voti': serializer.data['votes'],
+            })
+        choices_data = {
+            'id sondaggio' : PollSerializer(poll, context={'request':request}).data['url'][-2],
+            'question_text': super_data['question_text'],
+            'pub_date': super_data['pub_date'],
+            'scelte' : scelte
+        }
+        return Response(choices_data)
+    
+    
 class ChoiceViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows choices to be viewed or edited.
@@ -182,26 +180,47 @@ class ChoiceViewSet(viewsets.ModelViewSet):
         type=openapi.TYPE_OBJECT,
         properties={
             'poll' : openapi.Schema(type=openapi.TYPE_INTEGER, description="Id sondaggio di appartenenza"),
-            'testo': openapi.Schema(type=openapi.TYPE_STRING, description="Testo della scelta"),
-            'users': openapi.Schema(type=openapi.TYPE_ARRAY, items=openapi.Schema(type=openapi.TYPE_STRING), description="Lista username degli utenti che hanno votato")
+            'choice_text': openapi.Schema(type=openapi.TYPE_STRING, description="Testo della scelta"),
+            'votes': openapi.Schema(type=openapi.TYPE_INTEGER, description="Numero di voti"),
         }
     ))
     def update(self, request, *args, **kwargs):
         choice = self.get_object()
-        logging.info(choice)
-        pollSerializer = PollSerializer(data={'url': reverse('poll-detail', args=[request.data['poll']])})
+        serializer = ChoiceSerializer(choice, data=request.data, context = {'request': request})
+        if serializer.is_valid():
+            serializer.update(choice, serializer.validated_data)
+            return Response(serializer.data)
+        return Response(serializer.errors, status = 400)
+    
+    @swagger_auto_schema(request_body= openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'poll' : openapi.Schema(type=openapi.TYPE_INTEGER, description="Id sondaggio di appartenenza"),
+            'choice_text': openapi.Schema(type=openapi.TYPE_STRING, description="Testo della scelta"),
+            'votes': openapi.Schema(type=openapi.TYPE_INTEGER, description="Numero di voti"),
+        }
+    ))
+    def partial_update(self, request, *args, **kwargs):
+        choice = self.get_object()
+        serializer = ChoiceSerializer(choice, data=request.data, context = {'request': request}, partial=True)
+        if serializer.is_valid():
+            serializer.partial_update(choice, serializer.validated_data)
+            return Response(serializer.data)
+        return Response(serializer.errors, status = 400)
+    
+
+    
+    
+"""
+pollSerializer = PollSerializer(data={'url': reverse('poll-detail', args=[request.data['poll']])})
         if pollSerializer.is_valid():
             choice.poll = pollSerializer.validated_data['url']     
         choice.choice_text = request.data['testo']
         usernames = request.data.get('users', [])
         users = User.objects.filter(username__in = usernames)
-        logging.info(users)
         choice.users.set(users)
         choice.save()
-        return Response({'success' : 'Prova funzionante'},status=status.HTTP_201_CREATED)
-    
-    
-
+        return Response({'success' : 'Prova funzionante'},status=status.HTTP_201_CREATED)"""
 
 class PollDetailView(APIView):
     """
