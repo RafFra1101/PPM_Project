@@ -164,7 +164,6 @@ class PollViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         usernames = request.data.pop('users', [])
         poll = Poll.objects.create(**request.data)
-        logging.info(poll.id)
         users = []
         for username in usernames:
             users.append(User.objects.get(username = username))
@@ -179,23 +178,20 @@ class PollViewSet(viewsets.ModelViewSet):
         serializer = PollSerializer(poll, data=request.data, context = {'request': request})
         if serializer.is_valid():
             serializer.update(poll, serializer.validated_data)
-            return Response({'success' : 'Sondaggio creato'},status=status.HTTP_201_CREATED)
+            return Response({'success' : 'Sondaggio modificato'},status=status.HTTP_202_ACCEPTED)
         return Response(serializer.errors, status = 400)   
     def partial_update(self, request, *args, **kwargs):
         poll = self.get_object()
-        if 'users' in request.data:
-            usernames = request.data.get('users', [])
-            users = []
-            for username in usernames:
-                users.append(reverse('user-detail', args=[username]))
-            poll.users.set(users)
-            return Response({'success' : 'Scelte modificate correttamente'},status=status.HTTP_202_ACCEPTED)
-        else:
-            serializer = PollSerializer(poll, data=request.data, context = {'request': request}, partial=True)
-            if serializer.is_valid():
-                serializer.partial_update(poll, serializer.validated_data)
-                return Response(serializer.data)
-            return Response(serializer.errors, status = 400)
+        request_users = request.data.get('users')
+        if request_users is not None:
+            request.data['users'] = []
+            for username in request_users:
+                request.data['users'].append(reverse('user-detail', args=[username]))
+        serializer = PollSerializer(poll, data=request.data, context = {'request': request}, partial=True)
+        if serializer.is_valid():
+            serializer.partial_update(poll, serializer.validated_data)
+            return Response({'success' : 'Sondaggio modificato'},status=status.HTTP_202_ACCEPTED)
+        return Response(serializer.errors, status = 400)   
 
 class ChoiceViewSet(viewsets.ModelViewSet):
     """
