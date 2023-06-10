@@ -5,7 +5,7 @@ from django.contrib.auth.models import User, Group
 from rest_framework import viewsets, renderers, permissions, authentication, status, mixins
 from pollsAPI.serializers import *
 from .models import Poll, Choice
-from .permissions import PollsPermission
+from .permissions import PollsPermission, ChoicePermission, UsersPermission
 from django.http import JsonResponse
 from rest_framework.decorators import action, api_view, permission_classes, authentication_classes
 from rest_framework.views import APIView
@@ -15,24 +15,38 @@ from rest_framework.authentication import TokenAuthentication
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from django.contrib.auth.hashers import Argon2PasswordHasher, make_password, check_password
-import logging, requests
+import logging, requests, bcrypt
 
 logging.getLogger().setLevel(logging.INFO)
 api_url = "http://127.0.0.1:8000/"
-class UserViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint that allows users to be viewed or edited.
-    """
+class UserViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.ListModelMixin, mixins.DestroyModelMixin, viewsets.GenericViewSet):
+    
+    """API endpoint that allows users to be viewed or edited."""
+    
     queryset = User.objects.all().order_by('-date_joined')
     serializer_class = UserSerializer
     lookup_field = 'username'
-"""@api_view(['GET'])
-def userInfo(request, info):
-    if '@' in info:
-        utente = User.objects.get(email = info)
-    else:
-        utente = User.objects.get(username = info)
-    return JsonResponse(UserSerializer(utente, context={'request':request}).data)"""
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [UsersPermission]
+
+    def list(self, request, *args, **kwargs):
+        super_data = super().list(request, *args, **kwargs).data
+        for i in super_data['results']:
+            i.pop('password')
+            i.pop('email')
+        return Response(super_data)
+    @action(methods = ["get"], detail = True)
+    def ownPolls(self, request, username=None):
+        polls = Poll.objects.filter(owner = username)
+        serializer = PollSerializer(polls, many=True, context={'request':request})
+        return Response(serializer.data)
+    @action(methods = ["get"], detail = True)
+    def votedPolls(self, request, username=None):
+        polls = Poll.objects.filter(users__username = username)
+        serializer = PollSerializer(polls, many=True, context={'request':request})
+        return Response(serializer.data)
+        
+
     
 
 
@@ -41,24 +55,27 @@ def userInfo(request, info):
         required=['username', 'email', 'password'],
         properties={
             'username': openapi.Schema(type=openapi.TYPE_STRING),
-            'email': openapi.Schema(type=openapi.TYPE_STRING),
-            'password': openapi.Schema(type=openapi.TYPE_STRING),
+            'email': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_EMAIL),
+            'password': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_PASSWORD),
         },
+        
 ))
 @api_view(['POST'])
 def register(request):
-    username = request.data.get('username')
-    password = request.data.get('password')
-    email = request.data.get('email')
-    if username and password and email:
+    if request.data.get('username') and request.data.get('password') and request.data.get('email'):
         try:
-            user = User.objects.create_user(username=username, password=make_password(password), email=email)
-            token = Token.objects.create(user=user)
-            logging.info(token.key)
-            return Response(data={'token':token.key},status=status.HTTP_201_CREATED)
-        except:
-            return Response({'error': 'Registration failed.'}, status=status.HTTP_400_BAD_REQUEST)
+            serializer = UserSerializer(data=request.data, context = {'request': request})
+            if serializer.is_valid():
+                user = serializer.create(serializer.validated_data)
+                logging.warning(user.password)
+                token = Token.objects.create(user=user)
+                logging.info(token.key)
+                return Response(data={'token':token.key},status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status = 400)  
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     else:
+        
         return Response({'error': 'Please provide username, password and email.'}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -80,7 +97,11 @@ def login(request):
                 utente = User.objects.get(email = info)
             else:
                 utente = User.objects.get(username = info)
-            if login:
+            logging.info(password)
+            logging.info(utente.password)
+            login = bcrypt.checkpw(password.encode(), utente.password.encode())
+            logging.info(login)
+            if login :
                 token, created = Token.objects.get_or_create(user=utente)
                 logging.info(token.key)
                 return Response(data={'token':token.key},status=status.HTTP_202_ACCEPTED)
@@ -88,7 +109,7 @@ def login(request):
                 return Response({'error': 'Login failed, wrong credentials.'}, status=status.HTTP_400_BAD_REQUEST)
             
         except Exception as e:
-            logging.error(str(e))
+            logging.error("Exception:"+str(e))
             return Response({'error': 'Login failed.'}, status=status.HTTP_400_BAD_REQUEST)
     else:
         return Response({'error': 'Please provide username or email and password'}, status=status.HTTP_400_BAD_REQUEST)
@@ -140,7 +161,31 @@ class PollViewSet(viewsets.ModelViewSet):
         super_data = super().list(request, *args, **kwargs).data
         for i in super_data['results']:
             i.pop('users')
+            i.pop('owner')
         return Response(super_data)
+    @swagger_auto_schema(request_body= openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'question_text' : openapi.Schema(type=openapi.TYPE_STRING, description="Testo del sondaggio"),
+            'pub_date': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATETIME, description="Data pubblicazione"),
+            'users': openapi.Schema(type=openapi.TYPE_ARRAY, items = openapi.Schema(type=openapi.TYPE_STRING))
+        }
+    ))
+    def create(self, request, *args, **kwargs):
+        token = request.META.get('HTTP_AUTHORIZATION').split(" ")[1]
+        owner = Token.objects.get(key=token).user
+        logging.info(owner)
+        request.data['owner'] = owner
+        usernames = request.data.pop('users', [])
+        #request.data['owner'] = User.objects.get(username = request.data['owner'])
+        poll = Poll.objects.create(**request.data)
+        users = []
+        for username in usernames:
+            logging.info(users)
+            users.append(User.objects.get(username = username))
+            logging.info(users)
+        poll.users.set(users)
+        return Response({'success' : 'Sondaggio inserito correttamente'},status=status.HTTP_201_CREATED)  
     def retrieve(self, request, *args, **kwargs):
         super_data = super().retrieve(request, *args, **kwargs).data
         poll = self.get_object()
@@ -155,20 +200,13 @@ class PollViewSet(viewsets.ModelViewSet):
             })
         choices_data = {
             'id sondaggio' : PollSerializer(poll, context={'request':request}).data['url'][-2],
+            'owner' : super_data['owner'],
             'question_text': super_data['question_text'],
             'pub_date': super_data['pub_date'],
             'scelte' : scelte,
             'users' : [i.split('/', -1)[-2] for i in super_data['users']]
         }
         return Response(choices_data) 
-    def create(self, request, *args, **kwargs):
-        usernames = request.data.pop('users', [])
-        poll = Poll.objects.create(**request.data)
-        users = []
-        for username in usernames:
-            users.append(User.objects.get(username = username))
-        poll.users.set(users)
-        return Response({'success' : 'Sondaggio inserito correttamente'},status=status.HTTP_201_CREATED)
     def update(self, request, pk=None):
         poll = self.get_object()
         usernames = request.data.get('users', [])
@@ -199,6 +237,25 @@ class ChoiceViewSet(viewsets.ModelViewSet):
     """
     queryset = Choice.objects.all()
     serializer_class = ChoiceSerializer
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [ChoicePermission]
+
+    @swagger_auto_schema(request_body= openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'poll' : openapi.Schema(type=openapi.TYPE_INTEGER),
+            'choice_text': openapi.Schema(type=openapi.TYPE_STRING),
+            'votes' : openapi.Schema(type=openapi.TYPE_INTEGER)
+        }
+    ))
+    def create(self, request, *args, **kwargs):
+        poll = request.data.get('poll')
+        request.data['poll'] = reverse('poll-detail', args=[poll])
+        serializer = ChoiceSerializer(data=request.data, context = {'request': request})
+        if serializer.is_valid():
+            serializer.create(serializer.validated_data)
+            return Response({'success' : 'Scelta creata'},status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status = 400) 
     @swagger_auto_schema(operation_description=
                         "Restituisce:\n"+
                         "id - url della scelta\n"+

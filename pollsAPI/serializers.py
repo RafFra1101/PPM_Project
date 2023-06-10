@@ -5,7 +5,7 @@ from rest_framework import serializers
 from .models import Poll, Choice
 from django.utils import timezone
 from rest_framework.validators import UniqueValidator
-import logging
+import logging, bcrypt
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     url = serializers.HyperlinkedIdentityField(
@@ -24,6 +24,19 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
             message='Questa email è già stata utilizzata'
         )
     ])
+
+    def create(self, validated_data):
+        # Cripta la password utilizzando bcrypt
+        password = validated_data.pop('password')
+        hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+
+        # Crea l'utente con la password criptata
+        user = User.objects.create(
+            password=hashed_password.decode(),
+            **validated_data
+        )
+        return user
+
     class Meta:
         model = User
         fields = ['url', 'username', 'password', 'email']
@@ -38,8 +51,9 @@ class PollSerializer(serializers.HyperlinkedModelSerializer):
     )
     class Meta:
         model = Poll
-        fields = ['url', 'question_text', 'pub_date', 'users']
+        fields = ['url', 'owner', 'question_text', 'pub_date', 'users']
     def update(self, instance, validated_data):
+        instance.owner = validated_data.get('owner')
         instance.users.set(validated_data.get('users'))
         instance.question_text = validated_data.get('question_text', instance.question_text)
         instance.pub_date = validated_data.get('pub_date', instance.pub_date)

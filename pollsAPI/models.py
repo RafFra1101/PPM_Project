@@ -6,6 +6,7 @@ from django.contrib import admin
 
 
 class Poll(models.Model):
+    owner = models.ForeignKey(User, on_delete=models.SET_NULL, related_name="owner", to_field="username", null=True)
     question_text = models.CharField(max_length=200)
     pub_date = models.DateTimeField("date published")
     users = models.ManyToManyField(User)
