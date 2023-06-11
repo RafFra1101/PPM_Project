@@ -41,7 +41,6 @@ urlpatterns = [
     path('api/register/', viewsAPI.register, name="APIRegister"),
     path('api/login/', viewsAPI.login, name="APILogin"),
     path('admin/', admin.site.urls),
-    
     path("<int:poll_id>/", views.PollView.as_view(template_name="polls/detail.html"), name="detail"),
     path("<int:poll_id>/results/", views.PollView.as_view(template_name="polls/results.html"), name="results"),
     path("<int:poll_id>/vote/", views.vote, name="vote"),
