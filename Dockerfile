@@ -1,18 +1,26 @@
-# Specifica l'immagine di base
+# Specifica la base image
 FROM python:3.11.3
+
+# Copia i file del progetto nella directory /app
+COPY . /app
 
 # Imposta la directory di lavoro
 WORKDIR /app
 
-# Copia i file requirements.txt e il progetto Django
-COPY requirements.txt .
-COPY . .
+# Crea un ambiente virtuale
+RUN python -m venv venv
 
-# Installa le dipendenze
-RUN pip install --no-cache-dir -r requirements.txt
+# Attiva l'ambiente virtuale
+RUN . venv/bin/activate
 
-# Esponi la porta su cui sarà in ascolto l'applicazione
+# Aggiorna pip all'interno dell'ambiente virtuale
+RUN pip install --upgrade pip
+
+# Installa le dipendenze del progetto dal file requirements.txt
+RUN pip install -r requirements.txt
+
+# Esponi la porta
 EXPOSE 8000
 
-# Comando per eseguire l'applicazione
+# Avvia il server di sviluppo di Django all'interno dell'ambiente virtuale
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
