@@ -10,15 +10,15 @@
 {% endif %}
 {% if request.session.token %}
     <a href="{% url 'profile'%}">Vai al profilo</a>
-    <a href="{% url 'logout'%}?next={%url 'index'%}">logout</a>
+    <a href="{% url 'logout'%}?next={%url 'votedPolls'%}">logout</a>
 {% else %}
-    <a href="{% url 'login'%}?next={%url 'index'%}">Log in</a><br><a href="{% url 'register' %}?next={%url 'index'%}">Register</a><br><p>Come ospite è possibile solamente vedere i risultati</p>
+    <a href="{% url 'login'%}?next={%url 'votedPolls'%}">Log in</a><br><a href="{% url 'register' %}?next={%url 'votedPolls'%}">Register</a><br><p>Come ospite non è possibile vedere i sondaggi votati</p>
 {% endif %}
-{% if latest_poll_list %}
-    <h1>Ultimi sondaggi</h1>
+{% if polls %}
+    <h1>Sondaggi votati</h1>
     <ul>
-    {% for poll in latest_poll_list %}
-        <li><a href="{% url request.session.token|yesno:'detail,results' poll.id%}">{{ poll.question_text }}</a></li>
+    {% for poll in polls %}
+        <li><a href="{% url 'results' poll.id%}">{{ poll.question_text }}</a></li>
     {% endfor %}
     </ul>
 {% else %}

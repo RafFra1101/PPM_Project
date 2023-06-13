@@ -1,0 +1,31 @@
+{% load static %}
+
+<link rel="stylesheet" href="{% static 'polls/style.css' %}">
+{% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+        <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+{% if request.session.token %}
+    <a href="{% url 'profile'%}">Vai al profilo</a>
+    <a href="{% url 'logout'%}?next={%url 'ownPolls'%}">logout</a><br>
+    <a href="#">Crea un nuovo sondaggio</a>
+{% else %}
+    <a href="{% url 'login'%}?next={%url 'ownPolls'%}">Log in</a><br><a href="{% url 'register' %}?next={%url 'ownPolls'%}">Register</a><br><p>Come ospite non è possibile vedere i sondaggi personali</p>
+{% endif %}
+{% if polls %}
+    <h1>Sondaggi personali</h1>
+    <table>
+    {% for poll in polls %}
+        <tr>
+            <td><a href="{% url 'detail' poll.id%}">Domanda :{{ poll.question_text }}</a></td>
+            <td><a href="#">Modifica</a></td>
+            <td><a href="{% url 'deletePoll' poll.id%}" onclick="confirm('Sei sicuro di voler eliminare il sondaggio \'{{poll.question_text}}\'?')">Elimina</a></td></tr>
+        <tr></tr>
+        {% endfor %}
+    </ul>
+{% else %}
+    <h1>No polls are available.</h1>
+{% endif %}

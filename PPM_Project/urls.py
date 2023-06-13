@@ -20,6 +20,7 @@ from rest_framework import routers
 from pollsAPI import views as viewsAPI
 from polls import views
 from .swagger import urlpatterns as swagger_urls
+from polls.forms import LoginForm, RegisterForm
 
 
 router = routers.DefaultRouter()
@@ -34,12 +35,17 @@ router.register('choice', viewsAPI.ChoiceViewSet, 'choice')
 # Additionally, we include login URLs for the browsable API.
 urlpatterns = [
     path("", views.IndexView.as_view(), name="index"),
-    path("register", views.RegisterView.as_view(), name="register"),
-    path("login", views.LoginView.as_view(), name="login"),
+    path("register", views.RegisterLoginView.as_view(template_name="polls/register.html", form_class=RegisterForm), name="register"),
+    path("login", views.RegisterLoginView.as_view(template_name="polls/login.html", form_class=LoginForm), name="login"),
+    path("logout", views.ProfileView.logout, name="logout"),
+    path("profile", views.ProfileView.as_view(), name="profile"),
+    path("profile/votedPolls", views.VotedPollsView.as_view(), name="votedPolls"),
+    path("profile/ownPolls", views.OwnPollsView.as_view(), name="ownPolls"),
+    path("profile/ownPolls/deletePoll/<int:poll_id>", views.OwnPollsView.deletePoll, name="deletePoll"),
     path('api/', include(router.urls)),
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
-    path('api/register/', viewsAPI.register, name="APIRegister"),
-    path('api/login/', viewsAPI.login, name="APILogin"),
+    path('api/register/', viewsAPI.register, name="APIregister"),
+    path('api/login/', viewsAPI.login, name="APIlogin"),
     path('admin/', admin.site.urls),
     path("<int:poll_id>/", views.PollView.as_view(template_name="polls/detail.html"), name="detail"),
     path("<int:poll_id>/results/", views.PollView.as_view(template_name="polls/results.html"), name="results"),

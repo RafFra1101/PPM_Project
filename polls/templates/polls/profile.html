@@ -1,0 +1,28 @@
+{% load static %}
+
+<link rel="stylesheet" href="{% static 'polls/style.css' %}">
+{% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+        <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+{% if profile_data %}
+    <a href="{% url 'index' %}">Ritorna alla lista sondaggi</a>
+
+    <h1>Profilo</h1>
+    <table>
+        <tr><td>Username:</td><td>{{ profile_data.username }}</td></tr>
+        <tr><td>Email:</td><td>{{profile_data.email}}</td></tr>
+        <tr><td></td><td><a href="{%url 'logout'%}?next={%url 'profile'%}">Log out</a></td></tr>
+        <tr><td colspan="2"><a href="{%url 'ownPolls'%}">Vai ai tuoi sondaggi</a></td></tr>
+        <tr><td colspan="2"><a href="{%url 'votedPolls'%}">Vai ai sondaggi votati</a></td></tr>
+
+    </table>
+{% else %}
+    <h1>Not logged in</h1>
+{% endif %}
+{% if not profile_data or not request.session.token %}
+    <a href="{% url 'login' %}?next={%url 'profile'%}">Log in</a><br><a href="{% url 'register' %}?next={%url 'profile'%}">Register</a><br><a href="{% url 'index' %}">Ritorna alla lista sondaggi</a>
+{% endif %}

@@ -1,14 +1,23 @@
+{% if data.voted%}
+    <meta http-equiv="REFRESH" content="0;url={% url 'results' data.id%}">
+{%endif%}
+{% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+        <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
 <a href="{%url 'index' %}">Torna alla lista di sondaggi</a>
 {% with info=data.info scelte=data.scelte %}
 {% if scelte|length > 0%}
-<form action="{% url 'vote' info.id %}" method="post">
-    {% csrf_token %}
+<form action="{% url 'vote' info.id%}" method="post">
     <fieldset>
         <legend><h1>{{ info.testo }}</h1></legend>
         
         {% if error_message %}<p><strong>{{ error_message }}</strong></p>{% endif %}
         {% for choice in scelte %}
-            <input type="radio" name="choice" id="choice{{ forloop.counter }}" value="{{ choice.id }} / {{choice.voti}}">
+            <input type="radio" name="choice" id="choice{{ forloop.counter }}" value="{{ choice.id }}">
             <label for="choice{{ forloop.counter }}">{{ choice.testo }}</label><br>
         {% endfor %}
     </fieldset>

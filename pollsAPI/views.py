@@ -101,9 +101,9 @@ class ChoiceViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
         return Response(serializer.errors, status = 400)
 
-    @swagger_auto_schema(operation_description=PollsPermission.get_permission_string('vote')+"\nPermette di votare una scelta di un sondaggio\n"+token_needed,
-                         request_body=oa.Schema(type=oa.TYPE_OBJECT, properties={}, description="Nessun parametro necessario"))
-    @action(methods = ["post"], detail = True)
+    @swagger_auto_schema(operation_description=ChoicePermission.get_permission_string('vote')+"\nPermette di votare una scelta di un sondaggio\n"+token_needed,
+                         responses={201:"success : Voto inserito correttamente", 302: "L\'utente ha già votato"})
+    @action(methods = ["get"], detail = True)
     def vote(self, request, pk):
         choice = self.get_object()
         poll = choice.poll
@@ -118,7 +118,10 @@ class ChoiceViewSet(viewsets.ModelViewSet):
             poll.save()
             return Response({'success' : 'Voto inserito correttamente'},status=status.HTTP_201_CREATED)
 
-@swagger_auto_schema(method='post', responses={202: "token : stringa_token", 400: "error : Login failed, wrong credentials", 500: "Exception: messaggio eccezione"},
+@swagger_auto_schema(method='post', responses={202: "token : stringa_token\nusername : username\nemail : email", 
+                                               400: "error : Login failed, wrong password", 
+                                               404: "error : Login failed, user does not exist",
+                                               500: "Exception: messaggio eccezione"},
                      request_body=oa.Schema(
         type=oa.TYPE_OBJECT,
         required=['info', 'password'],
@@ -141,18 +144,16 @@ def login(request):
             if login :
                 token, created = Token.objects.get_or_create(user=utente)
                 logging.info("Token: "+token.key)
-                return Response(data={'token':token.key},status=status.HTTP_202_ACCEPTED)
+                return Response(data={'token':token.key, 'username': utente.username, 'email' : utente.email},status=status.HTTP_202_ACCEPTED)
             else:
-                return Response({'error': 'Login failed, wrong credentials'}, status=status.HTTP_400_BAD_REQUEST)
-            
+                return Response({'error': 'Login failed, wrong password'}, status=status.HTTP_400_BAD_REQUEST)
+        except User.DoesNotExist:
+            return Response({'error': 'Login failed, user does not exist'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({'Exception': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     else:
         return Response({'error': 'Please provide username or email and password'}, status=status.HTTP_400_BAD_REQUEST)
     
-@method_decorator(name='destroy', decorator=swagger_auto_schema(
-    operation_description=PollsPermission.get_permission_string('destroy')
-))
 class PollViewSet(viewsets.ModelViewSet):
     """
     API endpoint that allows polls to be viewed or edited.
@@ -187,7 +188,6 @@ class PollViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         token = request.META.get('HTTP_AUTHORIZATION').split(" ")[1]
         owner = Token.objects.get(key=token).user
-        logging.info(owner)
         request.data['owner'] = owner
         usernames = request.data.pop('users', [])
         users = []
@@ -206,7 +206,7 @@ class PollViewSet(viewsets.ModelViewSet):
         return Response(out ,status=status.HTTP_201_CREATED)  
     @swagger_auto_schema(operation_description=PollsPermission.get_permission_string('retrieve'),
                          responses={200: oa.Response('Schema valori di ritorno' , oa.Schema(type=oa.TYPE_OBJECT, properties={
-                            'id' : oa.Schema(type=oa.TYPE_INTEGER, description="id sondaggio"),
+                            'url' : oa.Schema(type=oa.TYPE_INTEGER, description="url sondaggio"),
                             'owner': oa.Schema(type=oa.TYPE_STRING,description="username proprietario del sondaggio"),
                             'question_text': oa.Schema(type=oa.TYPE_STRING,description="testo del sondaggio"),
                             'pub_date' : oa.Schema(type=oa.TYPE_STRING, format=oa.FORMAT_DATETIME, description="data di pubblicazione"),                                                
@@ -231,7 +231,7 @@ class PollViewSet(viewsets.ModelViewSet):
                 'votes': serializer.data['votes'],
             })
         choices_data = {
-            'id' : PollSerializer(poll, context={'request':request}).data['url'][-2],
+            'url' : PollSerializer(poll, context={'request':request}).data['url'],
             'owner' : super_data['owner'],
             'question_text': super_data['question_text'],
             'pub_date': super_data['pub_date'],
@@ -302,7 +302,17 @@ class PollViewSet(viewsets.ModelViewSet):
                 out['missingUsers'] = missingUsers
             return Response(out ,status=status.HTTP_202_ACCEPTED)
         return Response(serializer.errors, status = 400)   
-    
+    @swagger_auto_schema(operation_description=PollsPermission.get_permission_string('destroy'),
+        responses={200: 'question_text : testo del sondaggio',
+                  400: 'error : C\'è stato un problema'})
+    def destroy(self, request, *args, **kwargs):
+        testo = self.get_object().question_text
+        if super().destroy(request, *args, **kwargs).status_code == 204:
+            return Response({'question_text' : testo} ,status=status.HTTP_200_OK)
+        else:
+            return Response({'error' : "C'è stato un problema"} ,status=status.HTTP_400_BAD_REQUEST)
+
+
     @swagger_auto_schema(operation_description=PollsPermission.get_permission_string('choices')+"\nPermette di inserire nuove scelte ad un sondaggio", request_body= oa.Schema(
         type=oa.TYPE_OBJECT,
         properties={
@@ -317,7 +327,9 @@ class PollViewSet(viewsets.ModelViewSet):
         return Response({'success' : 'Scelte inserite correttamente'},status=status.HTTP_201_CREATED)
 
 
-@swagger_auto_schema(method='post', responses={201: "token : stringa_token", 400: "error : Please provide username, password and email.", 500: "Exception: messaggio eccezione"},
+@swagger_auto_schema(method='post', responses={201: "token : stringa_token\nusername : username\nemail : email", 
+                                               400: "error : Please provide username, password and email.\nemail : Questa email è già stata utilizzata\nusername : Questo username è già stato utilizzato", 
+                                               500: "Exception: messaggio eccezione"},
                      request_body=oa.Schema(
         type=oa.TYPE_OBJECT,
         required=['username', 'email', 'password'],
@@ -335,10 +347,9 @@ def register(request):
             serializer = UserSerializer(data=request.data, context = {'request': request})
             if serializer.is_valid():
                 user = serializer.create(serializer.validated_data)
-                logging.warning(user.password)
                 token = Token.objects.create(user=user)
-                logging.info(token.key)
-                return Response(data={'token':token.key},status=status.HTTP_201_CREATED)
+                logging.info("Token" + token.key)
+                return Response(data={'token':token.key, 'username': user.username, 'email' : user.email},status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status = 400)  
         except Exception as e:
             return Response({'Exception': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -358,9 +369,9 @@ class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, mixins.Destr
     queryset = User.objects.all().order_by('-date_joined')
     serializer_class = UserSerializer
     lookup_field = 'username'
-    authentication_classes = [TokenAuthentication]
+    """authentication_classes = [TokenAuthentication]
     permission_classes = [UsersPermission]
-
+"""
     @swagger_auto_schema(operation_description=UsersPermission.get_permission_string('list'),
                          responses={200: oa.Response('Schema valori di ritorno', oa.Schema(type=oa.TYPE_ARRAY, description="Lista degli utenti", 
                                                                         items=oa.Schema(type=oa.TYPE_OBJECT,
@@ -392,7 +403,15 @@ class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, mixins.Destr
         return Response(serializer.data)
         
 
-    
+"""@swagger_auto_schema(operation_description=token_needed, method='get', responses={202: "username : username\nemail : email", 404: "error : User not found"})
+@api_view(['GET'])
+def getUserFromToken(request):
+    try:
+        token = request.META.get('HTTP_AUTHORIZATION').split(" ")[1]
+        user = Token.objects.get(key = token).user
+        return Response({'username': user.username, 'email': user.email}, status=status.HTTP_202_ACCEPTED) 
+    except Exception as e:
+        return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)  """ 
 
 
 

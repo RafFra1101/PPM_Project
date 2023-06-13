@@ -1,14 +1,20 @@
 {% with info=data.info scelte=data.scelte %}
 {% if scelte|length > 0%}
 <h1>{{ info.testo }}</h1>
-
+{% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+        <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
 <ul>
 {% for choice in scelte %}
     <li>{{ choice.testo }} -- {{ choice.voti }} voto{{ choice.voti|pluralize }}</li>
 {% endfor %}
 </ul>
 
-<a href="{% url 'detail' info.id %}">Vote again?</a>
+<a href="{% url 'index'%}">Torna alla lista dei sondaggi</a>
 {% else %}
 <p>Nessuna scelta disponibile per il sondaggio "{{ info.testo }}"</p>
 {% endif %}
