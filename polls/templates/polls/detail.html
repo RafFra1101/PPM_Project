@@ -12,6 +12,7 @@
 {% with info=data.info scelte=data.scelte %}
 {% if scelte|length > 0%}
 <form action="{% url 'vote' info.id%}" method="post">
+    {% csrf_token %}
     <fieldset>
         <legend><h1>{{ info.testo }}</h1></legend>
         

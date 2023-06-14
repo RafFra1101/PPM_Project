@@ -1,0 +1,68 @@
+<script>
+    function aggiungiScelta() {
+      const container = document.getElementById('choice-container');
+      const choiceNumber = container.getElementsByClassName('choice').length + 1;
+  
+      const newChoice = document.createElement('div');
+      newChoice.classList.add('choice');
+      newChoice.id="choice${choiceNumber}"
+  
+      const newChoiceInput = document.createElement('input');
+      newChoiceInput.setAttribute('type', 'text');
+      newChoiceInput.setAttribute('name', `choice_text${choiceNumber}`);
+      newChoiceInput.setAttribute('placeholder', `Scelta ${choiceNumber}`);
+  
+      const newVotesInput = document.createElement('input');
+      newVotesInput.setAttribute('type', 'number');
+      newVotesInput.setAttribute('name', `votes${choiceNumber}`);
+      newVotesInput.setAttribute('placeholder', 'Voti iniziali');
+  
+      newChoice.appendChild(newChoiceInput);
+      newChoice.appendChild(newVotesInput);
+  
+      container.appendChild(newChoice);
+    }
+
+    function removeScelta(choiceNumber){
+        
+        const container = document.getElementById('choice-container');
+        const choice = document.getElementById(`choice${choiceNumber}`);
+        if(choice){
+            choice.remove()
+        }
+    }
+  </script>
+{% if form %}
+{% load poll_extras %}
+<form method="POST">
+    {% csrf_token %}
+    <p>Domanda : {{form.question_text}}</p>
+    <p>Proprietario : {{form.owner}}</p>
+    <div id="choice-container">
+        {% for field in form %}
+            {% if 'choice_text' in field.name %}
+            <div>
+                {% with index=field.name|last %}
+                <div id="choice{{index}}" class="choice">
+                    {{ field }}
+                    
+                        {% with 'votes'|add:index as voti %}
+                            {{ form|get_field:voti }}
+                        {% endwith %}
+                    <button type="button" onclick="removeScelta('{{ index }}')">Rimuovi scelta</button>
+                    
+                </div>
+                {% endwith %}
+            </div>
+            {% endif %}
+        {%endfor%}
+    </div>   
+  
+    <button type="button" onclick="aggiungiScelta()">Aggiungi scelta</button>
+  
+    <input type="submit" value="Invia"/>
+  </form>
+  {% else %}
+  <p>Nessuna informazione su questo sondaggio</p>
+  <a href="{% url 'ownPolls'%}">Torna alla lista dei tuoi sondaggi</a>
+{% endif %}

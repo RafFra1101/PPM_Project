@@ -8,6 +8,8 @@ from django.urls import reverse, get_resolver
 from django.utils import timezone
 from django.contrib import messages
 from django.contrib.auth import login
+from .forms import PollDetailsForm
+from datetime import datetime
 import requests, logging
 
 url_api = "http://127.0.0.1:8000"
@@ -19,7 +21,7 @@ class IndexView(generic.ListView):
     context_object_name = "latest_poll_list"
 
     def get_queryset(self, **kwargs):
-        """Return the last five published polls (not including those set to be published in the future)."""
+        """Return the last published polls"""
         response = requests.get(url_api+reverse('poll-list'))
         data = response.json()
         output = []
@@ -69,12 +71,12 @@ class PollView(generic.ListView):
 
 def vote(request, poll_id):
     choice_id = request.POST.get('choice')
+    logging.info(choice_id)
     url = url_api + reverse('choice-vote', args=[choice_id])
     if 'token' in request.session:
         headers = {"Authorization": "Token "+request.session['token']}
-    """else:
-        headers = """""
-    response = requests.post(url=url, headers=headers)
+    response = requests.get(url=url, headers=headers)
+    logging.info(headers)
     if response.status_code == 201:
         return HttpResponseRedirect(reverse("results", args=(poll_id,)))
     else:
@@ -178,4 +180,91 @@ class OwnPollsView(generic.ListView):
         else:
             messages.error(request, 'C\'è stato un problema')
             return HttpResponseRedirect(reverse("ownPolls"))
+        
+class newPoll(generic.FormView):
+    form_class = PollDetailsForm
+    template_name="polls/newPoll.html"
+
+    def form_valid(self, form):
+        data = form.newPoll(self.request.session)
+        choices = []
+        headers = {"Authorization": "Token "+self.request.session['token']}
+        for choice, start_votes in zip(self.request.POST.getlist('choice'), self.request.POST.getlist('votes')):
+            if choice.strip() != "":
+                if start_votes == "":
+                    start_votes = 0
+                choices.append({
+                    'choice_text' : choice,
+                    'votes' : start_votes
+                })       
+        request_data = {
+            'question_text' : data['question_text'],
+            'pub_date' : datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+        }
+        out = requests.post(url_api+reverse('poll-list'), request_data, headers=headers)
+        if out.status_code == 201:
+            out = out.json()
+            id = out['id']
+            if len(choices) > 0:
+                outChoices = requests.post(url_api+reverse('poll-choices', args=[id]), json={'choices' : choices}, headers=headers)
+                if outChoices.status_code != 201:
+                    messages.warning(self.request, "Scelte non aggiunte")
+            if self.request.session['username'] != data['owner']:
+                outOwner = requests.patch(url_api+reverse('poll-detail', args=[id]), {'owner' : data['owner']}, headers=headers)
+                if outOwner.status_code >= 400:
+                    messages.warning(self.request, "L'utente corrente è il proprietario")
+            messages.info(self.request, "Sondaggio creato")
+            return redirect(reverse('ownPolls'))
+        else:
+            messages.error(self.request, "Sondaggio non creato")
+            return redirect(reverse('newPoll'))
+
+def editPoll(request, poll_id):
+    out = requests.get(url_api+reverse('poll-detail', args=[poll_id]))
+    choices = []
+    if out.status_code != 200:
+        context = {}
+    else:
+        out = out.json()
+        for choice in out['choices']:
+            choices.append({
+                'choice_text' : choice['choice_text'],
+                'votes' : choice['votes']
+            })
+        initial_dict = {
+            'question_text' : out['question_text'],
+            'owner' : out['owner'],
+            'choices' : choices
+        }
+
+        if request.method == 'POST':
+            data = request.POST
+            choices = []
+            for key, value in data.items():
+                if key.startswith('choice_text'):
+                    index = key.replace('choice_text', '')
+                    vote_key = 'votes' + index
+                    if vote_key in data:
+                        choice_dict = {
+                            'choice_text': value,
+                            'votes': int(data[vote_key]) if data[vote_key]!="" else 0
+                        }
+                        choices.append(choice_dict)
+            request_data = {}
+            if data['question_text'] != initial_dict['question_text']:
+                request_data['question_text'] = data['question_text']
+            if data['owner'] != initial_dict['owner']:
+                request_data['owner'] = data['owner']
+            out = requests.patch(url_api+reverse('poll-detail', args=[poll_id]), data=request_data)
+            if choices != initial_dict['choices']:
+                out = requests.post(url_api+reverse('poll-choices', args=[poll_id]), json={'choices' : choices})
+            logging.warning(request_data)
+            return redirect(reverse('ownPolls'))
+        else:
+            form = PollDetailsForm(data = initial_dict)
+        
+        context = {'form': form}
+    return render(request, 'polls/editPoll.html', context)
+        
+
         

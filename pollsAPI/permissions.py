@@ -53,6 +53,8 @@ class ChoicePermission(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         if view.action in self.owner:
             return request.user == obj.poll.owner
+        elif view.action in self.auth:
+            return request.user.is_authenticated
         return super().has_object_permission(request, view, obj)
     
 

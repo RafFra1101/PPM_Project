@@ -1,0 +1,40 @@
+<script>
+    function aggiungiScelta() {
+      const container = document.getElementById('choice-container');
+      const choiceNumber = container.getElementsByClassName('choice').length + 1;
+  
+      const newChoice = document.createElement('div');
+      newChoice.classList.add('choice');
+  
+      const newChoiceInput = document.createElement('input');
+      newChoiceInput.setAttribute('type', 'text');
+      newChoiceInput.setAttribute('name', `choice`);
+      newChoiceInput.setAttribute('placeholder', `Scelta ${choiceNumber}`);
+  
+      const newVotesInput = document.createElement('input');
+      newVotesInput.setAttribute('type', 'number');
+      newVotesInput.setAttribute('name', `votes`);
+      newVotesInput.setAttribute('placeholder', 'Voti iniziali');
+  
+      newChoice.appendChild(newChoiceInput);
+      newChoice.appendChild(newVotesInput);
+  
+      container.appendChild(newChoice);
+    }
+  </script>
+  
+<form method="POST">
+    {{ form.as_p }}
+    {% csrf_token %}
+    <div id="choice-container">
+      <div class="choice">
+        <input type="text" name="choice" placeholder="Scelta 1" />
+        <input type="number" name="votes" placeholder="voti iniziali" />
+      </div>
+    </div>
+  
+    <button type="button" onclick="aggiungiScelta()">Aggiungi scelta</button>
+  
+    <input type="submit" value="Invia"/>
+  </form>
+  

@@ -15,7 +15,7 @@
     <a href="{% url 'login'%}?next={%url 'index'%}">Log in</a><br><a href="{% url 'register' %}?next={%url 'index'%}">Register</a><br><p>Come ospite è possibile solamente vedere i risultati</p>
 {% endif %}
 {% if latest_poll_list %}
-    <h1>Ultimi sondaggi</h1>
+    <h1>sondaggi</h1>
     <ul>
     {% for poll in latest_poll_list %}
         <li><a href="{% url request.session.token|yesno:'detail,results' poll.id%}">{{ poll.question_text }}</a></li>

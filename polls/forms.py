@@ -1,4 +1,6 @@
+from typing import Any, Mapping, Optional, Type, Union
 from django import forms
+from django.forms.utils import ErrorList
 from django.urls import reverse
 from django.shortcuts import redirect
 from django.contrib.auth.hashers import Argon2PasswordHasher, make_password, check_password
@@ -58,3 +60,33 @@ class LoginForm(forms.Form):
             session['username'] = data['username']
             session['email'] = data['email']
             return { 'success' : "Logged in successfully"}
+        
+class PollDetailsForm(forms.Form):
+    question_text = forms.CharField(label="Domanda del sondaggio")
+    owner = forms.CharField(label="Proprietario del sondaggio, lasciare vuoto per inserire sé stessi", required=False)
+    initial_data = {}
+    def __init__(self, *args, **kwargs):
+        data = kwargs.pop('data', {})
+        self.initial_data = data
+        choices = data['choices']
+        super(PollDetailsForm, self).__init__(*args, **kwargs)
+        self.fields["question_text"].initial = data['question_text']
+        self.fields["owner"].initial = data['owner']
+        for i, choice in enumerate(choices):
+            self.fields[f"choice_text{i}"] = forms.CharField(
+                initial=choice['choice_text'],
+                label=f"Scelta {i + 1}"
+            )
+            self.fields[f"votes{i}"] = forms.IntegerField(
+                initial=int(choice['votes']),
+                label="Numero voti"
+            )
+
+    def newPoll(self, session):
+        logging.warning(self.cleaned_data)
+        if self.cleaned_data['owner'].strip() == "":
+            self.cleaned_data['owner'] = session['username']
+        return self.cleaned_data
+    
+
+
