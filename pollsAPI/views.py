@@ -51,17 +51,30 @@ class ChoiceViewSet(viewsets.ModelViewSet):
                             properties={
                                 'poll' : oa.Schema(type=oa.TYPE_INTEGER, description="id del sondaggio a cui appartiene la scelta"),
                                 'choice_text': oa.Schema(type=oa.TYPE_STRING,description="testo della scelta"),
-                                'votes' : oa.Schema(type=oa.TYPE_INTEGER, description="numero di voti", default=0)
+                                'votes' : oa.Schema(type=oa.TYPE_INTEGER, description="numero di voti", default=0),
+                                'users': oa.Schema(type=oa.TYPE_ARRAY, items = oa.Schema(type=oa.TYPE_STRING), description="username degli utenti che hanno già votato")
                             }, required=['poll', 'choice_text']
-        ), responses={201: "Scelta creata\nid: id della scelta", 400: "Errore serializer"})
+        ), responses={201: "Scelta creata\nid: id della scelta\nmissingUsers : username non esistenti (chiave mancante in caso di inserimento di tutti gli utenti)", 400: "Errore serializer"})
     def create(self, request, *args, **kwargs):
         poll = request.data.get('poll')
         request.data['poll'] = reverse('poll-detail', args=[poll])
+        usernames = request.data.get('users', [])
+        users = []
+        missingUsers= []
+        out = {'success' : 'Scelta creata', 'id': choice.id}
+        for username in usernames:
+            try:
+                users.append(User.objects.get(username = username))
+            except User.DoesNotExist:
+                missingUsers.append(username)
+        if len(missingUsers) > 0:
+            out['missingUsers'] = missingUsers
         if not request.data.get('votes'): request.data['votes'] = 0
         serializer = ChoiceSerializer(data=request.data, context = {'request': request})
         if serializer.is_valid():
             choice = serializer.create(serializer.validated_data)
-            return Response({'success' : 'Scelta creata', 'id': choice.id},status=status.HTTP_201_CREATED)
+            choice.users.set(users)
+            return Response(out,status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status = 400) 
 
     @swagger_auto_schema(operation_description = ChoicePermission.get_permission_string('update'),
@@ -108,13 +121,12 @@ class ChoiceViewSet(viewsets.ModelViewSet):
         choice = self.get_object()
         poll = choice.poll
         user = request.user
-        if poll.users.filter(username = user.username).exists():         
+        if choice.users.filter(username = user.username).exists():         
             return Response({'info' : 'L\'utente ha già votato'},status=status.HTTP_302_FOUND)
         else:
             choice.votes += 1
+            choice.users.add(user)
             choice.save()
-            poll.users.add(user)
-            poll.save()
             return Response({'success' : 'Voto inserito correttamente'},status=status.HTTP_201_CREATED)
 
 @swagger_auto_schema(method='post', responses={202: "token : stringa_token\nusername : username\nemail : email", 
@@ -173,33 +185,19 @@ class PollViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         super_data = super().list(request, *args, **kwargs).data
         for i in super_data['results']:
-            i.pop('users')
             i.pop('owner')
         return Response(super_data['results'])
     @swagger_auto_schema(operation_description=PollsPermission.get_permission_string('create'), request_body= oa.Schema(
         type=oa.TYPE_OBJECT,
         properties={
             'question_text' : oa.Schema(type=oa.TYPE_STRING, description="Testo del sondaggio"),
-            'pub_date': oa.Schema(type=oa.TYPE_STRING, format=oa.FORMAT_DATETIME, description="Data pubblicazione"),
-            'users': oa.Schema(type=oa.TYPE_ARRAY, items = oa.Schema(type=oa.TYPE_STRING), description="username degli utenti che hanno già votato")
+            'pub_date': oa.Schema(type=oa.TYPE_STRING, format=oa.FORMAT_DATETIME, description="Data pubblicazione")
         }, required=['question_text', "pub_date"]
-    ), responses={201: 'success : Sondaggio inserito correttamente\nid : id del sondaggio\nmissingUsers : username non esistenti (chiave mancante in caso di inserimento di tutti gli utenti)'})
+    ), responses={201: 'success : Sondaggio inserito correttamente\nid : id del sondaggio'})
     def create(self, request, *args, **kwargs):
         owner = request.user
-        usernames = request.data.get('users', [])
-        users = []
-        missingUsers= []
-        for username in usernames:
-            try:
-                users.append(User.objects.get(username = username))
-            except User.DoesNotExist:
-                missingUsers.append(username)
         poll = Poll.objects.create(question_text=request.data['question_text'], pub_date=request.data['pub_date'], owner = owner)  
-        poll.users.set(users)
-        out = {'success' : 'Sondaggio inserito correttamente', 'id': poll.id}
-        if len(missingUsers) > 0:
-            out['missingUsers'] = missingUsers
-        return Response(out ,status=status.HTTP_201_CREATED)  
+        return Response({'success' : 'Sondaggio inserito correttamente', 'id': poll.id} ,status=status.HTTP_201_CREATED)  
     @swagger_auto_schema(operation_description=PollsPermission.get_permission_string('retrieve'),
                          responses={200: oa.Response('Schema valori di ritorno' , oa.Schema(type=oa.TYPE_OBJECT, properties={
                             'url' : oa.Schema(type=oa.TYPE_INTEGER, description="url sondaggio"),
@@ -219,6 +217,7 @@ class PollViewSet(viewsets.ModelViewSet):
         poll = self.get_object()
         choices = Choice.objects.filter(poll = poll)
         scelte = []
+        users = []
         for choice in choices:
             serializer = ChoiceSerializer(choice, context={'request':request})
             scelte.append({
@@ -226,13 +225,16 @@ class PollViewSet(viewsets.ModelViewSet):
                 'choice_text': choice.choice_text,
                 'votes': serializer.data['votes'],
             })
+            if len(serializer.data['users']) > 0:
+                users.extend([i.split('/', -1)[-2] for i in serializer.data['users']])
+            
         choices_data = {
             'url' : PollSerializer(poll, context={'request':request}).data['url'],
             'owner' : super_data['owner'],
             'question_text': super_data['question_text'],
             'pub_date': super_data['pub_date'],
             'choices' : scelte,
-            'users' : [i.split('/', -1)[-2] for i in super_data['users']]
+            'users' : users
         }
         return Response(choices_data) 
     
@@ -314,7 +316,8 @@ class PollViewSet(viewsets.ModelViewSet):
         properties={
             'choices' : oa.Schema(type=oa.TYPE_ARRAY, items = oa.Schema(type=oa.TYPE_OBJECT, properties={
                 'choice_text' : oa.Schema(type=oa.TYPE_STRING),
-                'votes' : oa.Schema(type=oa.TYPE_INTEGER)
+                'votes' : oa.Schema(type=oa.TYPE_INTEGER),
+                'users': oa.Schema(type=oa.TYPE_ARRAY, items = oa.Schema(type=oa.TYPE_STRING), description="username degli utenti che hanno già votato")
             }, required=['scelte']))
         }
     ), responses={201: "success : Scelte inserite correttamente"})
@@ -323,19 +326,26 @@ class PollViewSet(viewsets.ModelViewSet):
         poll = self.get_object()
         oldChoices = list(Choice.objects.filter(poll = poll))
         newChoices = request.data['choices']
+        logging.info(oldChoices)
+        logging.info(newChoices)
         if len(newChoices) == 0:
-            for x in range(0, len(oldChoices)):
+            for choice in oldChoices:
+                choice.delete()
+        elif len(oldChoices) == 0:
+            logging.info("Scelte vecchie = 0")
+            for choice in newChoices:
+                choice = Choice.objects.create(poll = poll, choice_text=choice['choice_text'], votes=choice['votes'])
+        else:
+            i = 0
+            for i in range(i, min(len(oldChoices), len(newChoices))):
+                oldChoices[i].choice_text = newChoices[i]['choice_text']
+                oldChoices[i].votes = newChoices[i]['votes']
+                oldChoices[i].save()
+            i += 1
+            for x in range(i, len(oldChoices)):
                 oldChoices[x].delete()
-        i = 0
-        for i in range(i, min(len(oldChoices), len(newChoices))):
-            oldChoices[i].choice_text = newChoices[i]['choice_text']
-            oldChoices[i].votes = newChoices[i]['votes']
-            oldChoices[i].save()
-        i += 1
-        for x in range(i, len(oldChoices)):
-            oldChoices[x].delete()
-        for x in range(i, len(newChoices)):
-            Choice.objects.create(poll = poll, choice_text=newChoices[x]['choice_text'], votes=newChoices[x]['votes'])
+            for x in range(i, len(newChoices)):
+                Choice.objects.create(poll = poll, choice_text=newChoices[x]['choice_text'], votes=newChoices[x]['votes'])
         return Response({'success' : 'Scelte inserite correttamente'},status=status.HTTP_201_CREATED)
 
 

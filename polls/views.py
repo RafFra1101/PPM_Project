@@ -42,7 +42,10 @@ def getChoices(self):
         
         if not self.request.session.get('username'):
             return{'voted':True, 'id': data['url'][-2]}
+        logging.info('provaUsers' in data['users'])
+        logging.info(data['users'])
         if data['users'] and self.request.session['username'] in data['users']:
+            
             messages.info(self.request, "L'utente ha già votato")
             return{'voted':True, 'id': data['url'].split('/', -1)[-2]}
     output = []
@@ -188,7 +191,8 @@ class newPollView(generic.FormView):
     def form_valid(self, form):
         data = form.newPoll(self.request.session)
         choices = []
-        headers = {"Authorization": "Token "+self.request.session['token']}
+        if 'token' in self.request.session:
+                headers = {"Authorization": "Token "+self.request.session['token']}
         for choice, start_votes in zip(self.request.POST.getlist('choice'), self.request.POST.getlist('votes')):
             if choice.strip() != "":
                 if start_votes == "":
@@ -203,9 +207,11 @@ class newPollView(generic.FormView):
         }
         out = requests.post(url_api+reverse('poll-list'), request_data, headers=headers)
         if out.status_code == 201:
+            logging.info("Sondaggio creato")
             out = out.json()
             id = out['id']
             if len(choices) > 0:
+                logging.info("Scelte > 0")
                 outChoices = requests.post(url_api+reverse('poll-choices', args=[id]), json={'choices' : choices}, headers=headers)
                 if outChoices.status_code != 201:
                     messages.warning(self.request, "Scelte non aggiunte")
@@ -223,10 +229,8 @@ def editPoll(request, poll_id):
     out = requests.get(url_api+reverse('poll-detail', args=[poll_id]))
     choices = []
     if out.status_code != 200:
-        logging.info("NON OK")
         context = {}
     else:
-        logging.info("OK")
         out = out.json()
         for choice in out['choices']:
             choices.append({
@@ -242,6 +246,8 @@ def editPoll(request, poll_id):
         if request.method == 'POST':
             data = request.POST
             choices = []
+            if 'token' in request.session:
+                headers = {"Authorization": "Token "+request.session['token']}
             for key, value in data.items():
                 if key.startswith('choice_text'):
                     index = key.replace('choice_text', '')
@@ -257,9 +263,9 @@ def editPoll(request, poll_id):
                 request_data['question_text'] = data['question_text']
             if data['owner'] != initial_dict['owner']:
                 request_data['owner'] = data['owner']
-            out = requests.patch(url_api+reverse('poll-detail', args=[poll_id]), data=request_data)
+            out = requests.patch(url_api+reverse('poll-detail', args=[poll_id]), data=request_data, headers=headers)
             if choices != initial_dict['choices']:
-                out = requests.post(url_api+reverse('poll-choices', args=[poll_id]), json={'choices' : choices})
+                out = requests.post(url_api+reverse('poll-choices', args=[poll_id]), json={'choices' : choices}, headers=headers)
             return redirect(reverse('ownPolls'))
         else:
             form = editPollForm(data = initial_dict)

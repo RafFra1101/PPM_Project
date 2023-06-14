@@ -43,6 +43,21 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class PollSerializer(serializers.HyperlinkedModelSerializer):
+    
+    class Meta:
+        model = Poll
+        fields = ['url', 'owner', 'question_text', 'pub_date']
+
+    def partial_update(self, instance, validated_data):
+        # Aggiorna solo i campi presenti nei dati validati
+        for field, value in validated_data.items():
+            setattr(instance, field, value)
+
+        instance.save()
+        return instance
+    
+
+class ChoiceSerializer(serializers.HyperlinkedModelSerializer):
     users = serializers.HyperlinkedRelatedField(
         many=True,
         queryset=User.objects.all(),
@@ -50,13 +65,14 @@ class PollSerializer(serializers.HyperlinkedModelSerializer):
         lookup_field = "username"
     )
     class Meta:
-        model = Poll
-        fields = ['url', 'owner', 'question_text', 'pub_date', 'users']
+        model = Choice
+        fields = ['url', 'poll', 'choice_text', 'votes', 'users']
+    
     def update(self, instance, validated_data):
-        instance.owner = validated_data.get('owner')
+        instance.owner = validated_data.get('poll')
         instance.users.set(validated_data.get('users'))
-        instance.question_text = validated_data.get('question_text', instance.question_text)
-        instance.pub_date = validated_data.get('pub_date', instance.pub_date)
+        instance.choice_text = validated_data.get('choice_text', instance.choice_text)
+        instance.votes = validated_data.get('votes', instance.votes)
         instance.save()
         return instance
     def partial_update(self, instance, validated_data):
@@ -66,21 +82,6 @@ class PollSerializer(serializers.HyperlinkedModelSerializer):
                 instance.users.set(value)
             else:
                 setattr(instance, field, value)
-
-        instance.save()
-        return instance
-    
-
-class ChoiceSerializer(serializers.HyperlinkedModelSerializer):
-
-    class Meta:
-        model = Choice
-        fields = ['url', 'poll', 'choice_text', 'votes']
-    
-    def partial_update(self, instance, validated_data):
-        # Aggiorna solo i campi presenti nei dati validati
-        for field, value in validated_data.items():
-            setattr(instance, field, value)
 
         instance.save()
         return instance
