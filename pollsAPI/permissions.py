@@ -8,7 +8,8 @@ class PollsPermission(permissions.BasePermission):
     generale = ['list', 'retrieve']
     auth = ['create']
     permessi = {tuple(owner) : "L'utente che effettua la richiesta deve essere il proprietario del sondaggio",
-                tuple(generale): "Nessun permesso necessario"}
+                tuple(generale): "Nessun permesso necessario",
+                tuple(auth): "È necessario autenticarsi per effettuare la richiesta"}
     @classmethod
     def get_permission_string(cls, action):
         for key, value in cls.permessi.items():

@@ -20,7 +20,7 @@ from rest_framework import routers
 from pollsAPI import views as viewsAPI
 from polls import views
 from .swagger import urlpatterns as swagger_urls
-from polls.forms import LoginForm, RegisterForm, PollDetailsForm
+from polls.forms import LoginForm, RegisterForm
 
 
 router = routers.DefaultRouter()
@@ -42,7 +42,7 @@ urlpatterns = [
     path("profile/votedPolls", views.VotedPollsView.as_view(), name="votedPolls"),
     path("profile/ownPolls", views.OwnPollsView.as_view(), name="ownPolls"),
     path("profile/ownPolls/deletePoll/<int:poll_id>", views.OwnPollsView.deletePoll, name="deletePoll"),
-    path("newPoll", views.newPoll.as_view(), name="newPoll"),
+    path("newPoll", views.newPollView.as_view(), name="newPoll"),
     path("<int:poll_id>/edit", views.editPoll, name="editPoll"),
     path('api/', include(router.urls)),
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),

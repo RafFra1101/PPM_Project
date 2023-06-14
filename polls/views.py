@@ -8,12 +8,12 @@ from django.urls import reverse, get_resolver
 from django.utils import timezone
 from django.contrib import messages
 from django.contrib.auth import login
-from .forms import PollDetailsForm
+from .forms import newPollForm, editPollForm
 from datetime import datetime
 import requests, logging
 
-url_api = "http://localhost:8000"
-url_base = "http://localhost:8000"
+url_api = "http://127.0.0.1:8000/"
+url_base = "http://127.0.0.1:8000/"
 logging.getLogger().setLevel(logging.INFO)
 # Create your views here.
 class IndexView(generic.ListView):
@@ -71,12 +71,10 @@ class PollView(generic.ListView):
 
 def vote(request, poll_id):
     choice_id = request.POST.get('choice')
-    logging.info(choice_id)
     url = url_api + reverse('choice-vote', args=[choice_id])
     if 'token' in request.session:
         headers = {"Authorization": "Token "+request.session['token']}
     response = requests.get(url=url, headers=headers)
-    logging.info(headers)
     if response.status_code == 201:
         return HttpResponseRedirect(reverse("results", args=(poll_id,)))
     else:
@@ -140,8 +138,10 @@ class VotedPollsView(generic.ListView):
         output = []
         username = str(self.request.session.get('username'))
         if username:
+            if 'token' in self.request.session:
+                headers = {"Authorization": "Token "+self.request.session['token']}
             url = url_api+reverse('user-votedPolls', args=[username])
-            response = requests.get(url)
+            response = requests.get(url, headers=headers)
             data = response.json()
             for x in data:
                 output.append({
@@ -181,8 +181,8 @@ class OwnPollsView(generic.ListView):
             messages.error(request, 'C\'è stato un problema')
             return HttpResponseRedirect(reverse("ownPolls"))
         
-class newPoll(generic.FormView):
-    form_class = PollDetailsForm
+class newPollView(generic.FormView):
+    form_class = newPollForm
     template_name="polls/newPoll.html"
 
     def form_valid(self, form):
@@ -223,8 +223,10 @@ def editPoll(request, poll_id):
     out = requests.get(url_api+reverse('poll-detail', args=[poll_id]))
     choices = []
     if out.status_code != 200:
+        logging.info("NON OK")
         context = {}
     else:
+        logging.info("OK")
         out = out.json()
         for choice in out['choices']:
             choices.append({
@@ -258,10 +260,9 @@ def editPoll(request, poll_id):
             out = requests.patch(url_api+reverse('poll-detail', args=[poll_id]), data=request_data)
             if choices != initial_dict['choices']:
                 out = requests.post(url_api+reverse('poll-choices', args=[poll_id]), json={'choices' : choices})
-            logging.warning(request_data)
             return redirect(reverse('ownPolls'))
         else:
-            form = PollDetailsForm(data = initial_dict)
+            form = editPollForm(data = initial_dict)
         
         context = {'form': form}
     return render(request, 'polls/editPoll.html', context)

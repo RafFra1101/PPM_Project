@@ -61,7 +61,18 @@ class LoginForm(forms.Form):
             session['email'] = data['email']
             return { 'success' : "Logged in successfully"}
         
-class PollDetailsForm(forms.Form):
+class newPollForm(forms.Form):
+    question_text = forms.CharField(label="Domanda del sondaggio")
+    owner = forms.CharField(label="Proprietario del sondaggio, lasciare vuoto per inserire sé stessi", required=False)
+    initial_data = {}
+
+
+    def newPoll(self, session):
+        if self.cleaned_data['owner'].strip() == "":
+            self.cleaned_data['owner'] = session['username']
+        return self.cleaned_data
+    
+class editPollForm(forms.Form):
     question_text = forms.CharField(label="Domanda del sondaggio")
     owner = forms.CharField(label="Proprietario del sondaggio, lasciare vuoto per inserire sé stessi", required=False)
     initial_data = {}
@@ -69,7 +80,7 @@ class PollDetailsForm(forms.Form):
         data = kwargs.pop('data', {})
         self.initial_data = data
         choices = data['choices']
-        super(PollDetailsForm, self).__init__(*args, **kwargs)
+        super(editPollForm, self).__init__(*args, **kwargs)
         self.fields["question_text"].initial = data['question_text']
         self.fields["owner"].initial = data['owner']
         for i, choice in enumerate(choices):
@@ -82,11 +93,6 @@ class PollDetailsForm(forms.Form):
                 label="Numero voti"
             )
 
-    def newPoll(self, session):
-        logging.warning(self.cleaned_data)
-        if self.cleaned_data['owner'].strip() == "":
-            self.cleaned_data['owner'] = session['username']
-        return self.cleaned_data
     
 
 

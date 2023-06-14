@@ -10,12 +10,13 @@
 {% endif %}
 <ul>
 {% for choice in scelte %}
-    <li>{{ choice.testo }} -- {{ choice.voti }} voto{{ choice.voti|pluralize }}</li>
+    <li>{{ choice.testo }} -- {{ choice.voti }} vote{{ choice.voti|pluralize }}</li>
 {% endfor %}
 </ul>
 
 <a href="{% url 'index'%}">Torna alla lista dei sondaggi</a>
 {% else %}
 <p>Nessuna scelta disponibile per il sondaggio "{{ info.testo }}"</p>
+<a href="{% url 'index'%}">Torna alla lista dei sondaggi</a>
 {% endif %}
 {% endwith %}

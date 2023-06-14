@@ -19,7 +19,6 @@ from django.contrib.auth.hashers import Argon2PasswordHasher, make_password, che
 import logging, requests, bcrypt
 
 logging.getLogger().setLevel(logging.INFO)
-token_needed = "È necessario passare un token nell'header come 'Authorization: Token stringa_token'"
 @method_decorator(name='retrieve', decorator=swagger_auto_schema(
     operation_description=ChoicePermission.get_permission_string('retrieve')
 ))
@@ -102,14 +101,13 @@ class ChoiceViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
         return Response(serializer.errors, status = 400)
 
-    @swagger_auto_schema(operation_description=ChoicePermission.get_permission_string('vote')+"\nPermette di votare una scelta di un sondaggio\n"+token_needed,
+    @swagger_auto_schema(operation_description=ChoicePermission.get_permission_string('vote')+"\nPermette di votare una scelta di un sondaggio",
                          responses={201:"success : Voto inserito correttamente", 302: "L\'utente ha già votato"})
     @action(methods = ["get"], detail = True)
     def vote(self, request, pk):
         choice = self.get_object()
         poll = choice.poll
         user = request.user
-        logging.info(user)
         if poll.users.filter(username = user.username).exists():         
             return Response({'info' : 'L\'utente ha già votato'},status=status.HTTP_302_FOUND)
         else:
@@ -178,7 +176,7 @@ class PollViewSet(viewsets.ModelViewSet):
             i.pop('users')
             i.pop('owner')
         return Response(super_data['results'])
-    @swagger_auto_schema(operation_description=PollsPermission.get_permission_string('create')+"\ntoken_needed", request_body= oa.Schema(
+    @swagger_auto_schema(operation_description=PollsPermission.get_permission_string('create'), request_body= oa.Schema(
         type=oa.TYPE_OBJECT,
         properties={
             'question_text' : oa.Schema(type=oa.TYPE_STRING, description="Testo del sondaggio"),
