@@ -12,8 +12,8 @@ from .forms import PollDetailsForm
 from datetime import datetime
 import requests, logging
 
-url_api = "http://127.0.0.1:8000"
-url_base = "http://127.0.0.1:8000"
+url_api = "http://localhost:8000"
+url_base = "http://localhost:8000"
 logging.getLogger().setLevel(logging.INFO)
 # Create your views here.
 class IndexView(generic.ListView):

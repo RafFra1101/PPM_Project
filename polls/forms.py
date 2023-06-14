@@ -8,7 +8,7 @@ import logging
 
 import requests
 
-url_api = "http://127.0.0.1:8000"
+url_api = "http://localhost:8000"
 
 class RegisterForm(forms.Form):
     username = forms.CharField()
