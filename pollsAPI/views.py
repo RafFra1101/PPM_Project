@@ -6,6 +6,7 @@ from pollsAPI.serializers import *
 from .models import Poll, Choice
 from .permissions import PollsPermission, ChoicePermission, UsersPermission
 from django.http import JsonResponse
+from django.http.request import QueryDict
 from django.utils.decorators import method_decorator
 from rest_framework.decorators import action, api_view, permission_classes, authentication_classes
 from rest_framework.views import APIView
@@ -31,8 +32,8 @@ class ChoiceViewSet(viewsets.ModelViewSet):
     """
     queryset = Choice.objects.all()
     serializer_class = ChoiceSerializer
-    """authentication_classes = [TokenAuthentication]
-    permission_classes = [ChoicePermission]"""
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [ChoicePermission]
 
     @swagger_auto_schema(operation_description=ChoicePermission.get_permission_string('list'),
                          responses={200: oa.Response('Schema valori di ritorno', oa.Schema(type=oa.TYPE_ARRAY, 
@@ -107,9 +108,9 @@ class ChoiceViewSet(viewsets.ModelViewSet):
     def vote(self, request, pk):
         choice = self.get_object()
         poll = choice.poll
-        token = request.META.get('HTTP_AUTHORIZATION').split(" ")[1]
-        user = Token.objects.get(key=token).user
-        if poll.users.filter(username = user.username).exists(): 
+        user = request.user
+        logging.info(user)
+        if poll.users.filter(username = user.username).exists():         
             return Response({'info' : 'L\'utente ha già votato'},status=status.HTTP_302_FOUND)
         else:
             choice.votes += 1
@@ -160,8 +161,8 @@ class PollViewSet(viewsets.ModelViewSet):
     """
     queryset = Poll.objects.all().order_by('-pub_date')
     serializer_class = PollSerializer
-    """authentication_classes = [TokenAuthentication]
-    permission_classes = [PollsPermission]"""
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [PollsPermission]
 
     @swagger_auto_schema(operation_description=PollsPermission.get_permission_string('list'),
                          responses={200: oa.Response('Schema valori di ritorno', oa.Schema(type=oa.TYPE_ARRAY, 
@@ -186,10 +187,8 @@ class PollViewSet(viewsets.ModelViewSet):
         }, required=['question_text', "pub_date"]
     ), responses={201: 'success : Sondaggio inserito correttamente\nid : id del sondaggio\nmissingUsers : username non esistenti (chiave mancante in caso di inserimento di tutti gli utenti)'})
     def create(self, request, *args, **kwargs):
-        token = request.META.get('HTTP_AUTHORIZATION').split(" ")[1]
-        owner = Token.objects.get(key=token).user
-        request.data['owner'] = owner
-        usernames = request.data.pop('users', [])
+        owner = request.user
+        usernames = request.data.get('users', [])
         users = []
         missingUsers= []
         for username in usernames:
@@ -197,8 +196,7 @@ class PollViewSet(viewsets.ModelViewSet):
                 users.append(User.objects.get(username = username))
             except User.DoesNotExist:
                 missingUsers.append(username)
-        poll = Poll.objects.create(**request.data)
-        
+        poll = Poll.objects.create(question_text=request.data['question_text'], pub_date=request.data['pub_date'], owner = owner)  
         poll.users.set(users)
         out = {'success' : 'Sondaggio inserito correttamente', 'id': poll.id}
         if len(missingUsers) > 0:
@@ -316,14 +314,30 @@ class PollViewSet(viewsets.ModelViewSet):
     @swagger_auto_schema(operation_description=PollsPermission.get_permission_string('choices')+"\nPermette di inserire nuove scelte ad un sondaggio", request_body= oa.Schema(
         type=oa.TYPE_OBJECT,
         properties={
-            'scelte' : oa.Schema(type=oa.TYPE_ARRAY, items = oa.Schema(type=oa.TYPE_STRING))
+            'choices' : oa.Schema(type=oa.TYPE_ARRAY, items = oa.Schema(type=oa.TYPE_OBJECT, properties={
+                'choice_text' : oa.Schema(type=oa.TYPE_STRING),
+                'votes' : oa.Schema(type=oa.TYPE_INTEGER)
+            }, required=['scelte']))
         }
     ), responses={201: "success : Scelte inserite correttamente"})
     @action(methods = ["post"], detail = True)
     def choices(self, request, pk):
         poll = self.get_object()
-        for choice in request.data['scelte']:
-            Choice.objects.create(poll = poll, choice_text=choice)
+        oldChoices = list(Choice.objects.filter(poll = poll))
+        newChoices = request.data['choices']
+        if len(newChoices) == 0:
+            for x in range(0, len(oldChoices)):
+                oldChoices[x].delete()
+        i = 0
+        for i in range(i, min(len(oldChoices), len(newChoices))):
+            oldChoices[i].choice_text = newChoices[i]['choice_text']
+            oldChoices[i].votes = newChoices[i]['votes']
+            oldChoices[i].save()
+        i += 1
+        for x in range(i, len(oldChoices)):
+            oldChoices[x].delete()
+        for x in range(i, len(newChoices)):
+            Choice.objects.create(poll = poll, choice_text=newChoices[x]['choice_text'], votes=newChoices[x]['votes'])
         return Response({'success' : 'Scelte inserite correttamente'},status=status.HTTP_201_CREATED)
 
 
@@ -369,9 +383,9 @@ class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, mixins.Destr
     queryset = User.objects.all().order_by('-date_joined')
     serializer_class = UserSerializer
     lookup_field = 'username'
-    """authentication_classes = [TokenAuthentication]
+    authentication_classes = [TokenAuthentication]
     permission_classes = [UsersPermission]
-"""
+
     @swagger_auto_schema(operation_description=UsersPermission.get_permission_string('list'),
                          responses={200: oa.Response('Schema valori di ritorno', oa.Schema(type=oa.TYPE_ARRAY, description="Lista degli utenti", 
                                                                         items=oa.Schema(type=oa.TYPE_OBJECT,
@@ -402,16 +416,6 @@ class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, mixins.Destr
         serializer = PollSerializer(polls, many=True, context={'request':request})
         return Response(serializer.data)
         
-
-"""@swagger_auto_schema(operation_description=token_needed, method='get', responses={202: "username : username\nemail : email", 404: "error : User not found"})
-@api_view(['GET'])
-def getUserFromToken(request):
-    try:
-        token = request.META.get('HTTP_AUTHORIZATION').split(" ")[1]
-        user = Token.objects.get(key = token).user
-        return Response({'username': user.username, 'email': user.email}, status=status.HTTP_202_ACCEPTED) 
-    except Exception as e:
-        return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)  """ 
 
 
 
