@@ -1,0 +1,13 @@
+name: ppm-project
+services:
+  app:
+    image: ppm_project
+    command: docker-compose up
+    ports:
+      - 8000:8000
+    envs:
+      - SECRET_KEY= django-insecure-#tl91o@gtyc!q1^ke(9)_#r5q23(hg17n%wf+&jrvf_p==hy$
+    volumes:
+      - .:/app
+    buildCommand: docker-compose build
+    buildDirectory: .
