@@ -17,7 +17,6 @@ COPY docker-compose.yml /app/docker-compose.yml
 
 
 # Esegui le migrazioni del database
-RUN python manage.py makemigrations
 RUN python manage.py migrate
 
 # Esporri la porta del server web (modifica il numero di porta se necessario)
