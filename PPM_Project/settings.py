@@ -32,7 +32,7 @@ env = environ.Env(
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env("SECRET_KEY")
-URL = "https://ppmproject-production.up.railway.app/"
+URL = "https://ppmproject-production.up.railway.app"
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
