@@ -22,11 +22,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-#tl91o@gtyc!q1^ke(9)_#r5q23(hg17n%wf+&jrvf_p==hy$*'
-URL = "https://ppmproject-production.up.railway.app"
+URL = "https://ppm-project-flame.vercel.app/"
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['127.0.0.1', '.vercel.app']
 
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
