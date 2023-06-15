@@ -1,5 +1,6 @@
 
 from typing import Any
+from django.conf import settings
 from django.db.models.query import QuerySet
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponse, HttpResponseRedirect
@@ -12,8 +13,6 @@ from .forms import newPollForm, editPollForm
 from datetime import datetime
 import requests, logging
 
-url_api = "https://ppmproject-production.up.railway.app/"
-url_base = "https://ppmproject-production.up.railway.app/"
 logging.getLogger().setLevel(logging.INFO)
 # Create your views here.
 class IndexView(generic.ListView):
@@ -22,7 +21,7 @@ class IndexView(generic.ListView):
 
     def get_queryset(self, **kwargs):
         """Return the last published polls"""
-        response = requests.get(url_api+reverse('poll-list'))
+        response = requests.get(settings.URL+reverse('poll-list'))
         data = response.json()
         output = []
         for x in data:
@@ -35,7 +34,7 @@ class IndexView(generic.ListView):
 
 def getChoices(self):
     """Return the choices of the poll"""
-    url = url_api+reverse('poll-detail', args=[self.kwargs['poll_id']])
+    url = settings.URL+reverse('poll-detail', args=[self.kwargs['poll_id']])
     response = requests.get(url)
     data = response.json()
     if 'detail' in self.template_name:
@@ -74,7 +73,7 @@ class PollView(generic.ListView):
 
 def vote(request, poll_id):
     choice_id = request.POST.get('choice')
-    url = url_api + reverse('choice-vote', args=[choice_id])
+    url = settings.URL + reverse('choice-vote', args=[choice_id])
     if 'token' in request.session:
         headers = {"Authorization": "Token "+request.session['token']}
     response = requests.get(url=url, headers=headers)
@@ -143,7 +142,7 @@ class VotedPollsView(generic.ListView):
         if username:
             if 'token' in self.request.session:
                 headers = {"Authorization": "Token "+self.request.session['token']}
-            url = url_api+reverse('user-votedPolls', args=[username])
+            url = settings.URL+reverse('user-votedPolls', args=[username])
             response = requests.get(url, headers=headers)
             data = response.json()
             for x in data:
@@ -162,7 +161,7 @@ class OwnPollsView(generic.ListView):
         output = []
         username = str(self.request.session.get('username'))
         if username:
-            url = url_api+reverse('user-ownPolls', args=[username])
+            url = settings.URL+reverse('user-ownPolls', args=[username])
             response = requests.get(url)
             data = response.json()
             for x in data:
@@ -173,7 +172,7 @@ class OwnPollsView(generic.ListView):
         return output
     
     def deletePoll(request, poll_id):
-        url = url_api + reverse('poll-detail', args=[poll_id])
+        url = settings.URL + reverse('poll-detail', args=[poll_id])
         if 'token' in request.session:
             headers = {"Authorization": "Token "+request.session['token']}
         response = requests.delete(url=url, headers=headers)
@@ -205,18 +204,18 @@ class newPollView(generic.FormView):
             'question_text' : data['question_text'],
             'pub_date' : datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
         }
-        out = requests.post(url_api+reverse('poll-list'), request_data, headers=headers)
+        out = requests.post(settings.URL+reverse('poll-list'), request_data, headers=headers)
         if out.status_code == 201:
             logging.info("Sondaggio creato")
             out = out.json()
             id = out['id']
             if len(choices) > 0:
                 logging.info("Scelte > 0")
-                outChoices = requests.post(url_api+reverse('poll-choices', args=[id]), json={'choices' : choices}, headers=headers)
+                outChoices = requests.post(settings.URL+reverse('poll-choices', args=[id]), json={'choices' : choices}, headers=headers)
                 if outChoices.status_code != 201:
                     messages.warning(self.request, "Scelte non aggiunte")
             if self.request.session['username'] != data['owner']:
-                outOwner = requests.patch(url_api+reverse('poll-detail', args=[id]), {'owner' : data['owner']}, headers=headers)
+                outOwner = requests.patch(settings.URL+reverse('poll-detail', args=[id]), {'owner' : data['owner']}, headers=headers)
                 if outOwner.status_code >= 400:
                     messages.warning(self.request, "L'utente corrente è il proprietario")
             messages.info(self.request, "Sondaggio creato")
@@ -226,7 +225,7 @@ class newPollView(generic.FormView):
             return redirect(reverse('newPoll'))
 
 def editPoll(request, poll_id):
-    out = requests.get(url_api+reverse('poll-detail', args=[poll_id]))
+    out = requests.get(settings.URL+reverse('poll-detail', args=[poll_id]))
     choices = []
     if out.status_code != 200:
         context = {}
@@ -263,9 +262,9 @@ def editPoll(request, poll_id):
                 request_data['question_text'] = data['question_text']
             if data['owner'] != initial_dict['owner']:
                 request_data['owner'] = data['owner']
-            out = requests.patch(url_api+reverse('poll-detail', args=[poll_id]), data=request_data, headers=headers)
+            out = requests.patch(settings.URL+reverse('poll-detail', args=[poll_id]), data=request_data, headers=headers)
             if choices != initial_dict['choices']:
-                out = requests.post(url_api+reverse('poll-choices', args=[poll_id]), json={'choices' : choices}, headers=headers)
+                out = requests.post(settings.URL+reverse('poll-choices', args=[poll_id]), json={'choices' : choices}, headers=headers)
             return redirect(reverse('ownPolls'))
         else:
             form = editPollForm(data = initial_dict)

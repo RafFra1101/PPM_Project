@@ -4,11 +4,12 @@ from django.forms.utils import ErrorList
 from django.urls import reverse
 from django.shortcuts import redirect
 from django.contrib.auth.hashers import Argon2PasswordHasher, make_password, check_password
+from django.conf import settings
 import logging
 
 import requests
 
-url_api = "https://ppmproject-production.up.railway.app/"
+
 
 class RegisterForm(forms.Form):
     username = forms.CharField()
@@ -22,7 +23,7 @@ class RegisterForm(forms.Form):
             "email" : self.cleaned_data['email'],
             "password" : self.cleaned_data['password']
         }
-        response = requests.post(url_api+reverse('APIregister'), data)  # Sostituisci l'URL con l'API reale che desideri chiamare
+        response = requests.post(settings.URL+reverse('APIregister'), data)  # Sostituisci l'URL con l'API reale che desideri chiamare
         data = response.json()
         if response.status_code == 400:
             if 'username' in data:
@@ -49,7 +50,7 @@ class LoginForm(forms.Form):
             "info" : self.cleaned_data['info'],
             "password" : self.cleaned_data['password']
         }
-        response = requests.post(url_api+reverse('APIlogin'), data)
+        response = requests.post(settings.URL+reverse('APIlogin'), data)
         data = response.json() 
         if response.status_code == 400 or response.status_code == 404:
             return { 'error' : str(data['error'])}
