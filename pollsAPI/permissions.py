@@ -40,7 +40,7 @@ class ChoicePermission(permissions.BasePermission):
     
     def has_permission(self, request, view):
         if view.action in self.owner:
-            poll_id= request.data['poll']
+            poll_id = request.data['poll']
             poll = Poll.objects.get(id = poll_id)
             if poll:
                 if poll.owner == request.user:
