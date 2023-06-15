@@ -1,6 +1,6 @@
 from rest_framework import permissions
 from .models import Poll
-
+import logging
 class PollsPermission(permissions.BasePermission):
     owner = ['update', 'partial_update', 'destroy', 'choices']
     generale = ['list', 'retrieve']
@@ -39,23 +39,15 @@ class ChoicePermission(permissions.BasePermission):
         return "Permesso non definito per questa azione"
     
     def has_permission(self, request, view):
-        if view.action in self.owner:
-            if 'poll' in request.data:
-                poll_id = request.data['poll']
-            poll = Poll.objects.get(id = poll_id)
-            if poll:
-                if poll.owner == request.user:
-                    return True
-            return False
-        else:
+        if view.action in self.generale:
             return True
+        else:
+            return request.user.is_authenticated
 
 
     def has_object_permission(self, request, view, obj):
         if view.action in self.owner:
             return request.user == obj.poll.owner
-        elif view.action in self.auth:
-            return request.user.is_authenticated
         return super().has_object_permission(request, view, obj)
     
 
