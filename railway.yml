@@ -1,13 +1,13 @@
 name: ppm-project
 services:
-  app:
-    image: ppm_project
-    command: docker-compose up
+  web:
+    build:
+      context: .
     ports:
-      - 8000:8000
-    envs:
-      - SECRET_KEY= django-insecure-#tl91o@gtyc!q1^ke(9)_#r5q23(hg17n%wf+&jrvf_p==hy$
+      - "8000:8000"
+    depends_on:
+      - db
+  db:
+    image: "db-sqlite:latest"
     volumes:
-      - .:/app
-    buildCommand: docker-compose build
-    buildDirectory: .
+      - ./db.sqlite3:/app/db.sqlite3
