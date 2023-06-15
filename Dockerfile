@@ -8,8 +8,7 @@ WORKDIR /app
 COPY . .
 
 # Installa le dipendenze del progetto
-RUN pip install -r requirements.txt
-
+RUN RUN python -m pip install -r requirements.txt
 
 ENTRYPOINT [ "sh", "./start.sh" ]
 
