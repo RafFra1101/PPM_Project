@@ -10,6 +10,6 @@ COPY . .
 # Installa le dipendenze del progetto
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Esegui le migrazioni del database
-RUN python manage.py migrate
+
+ENTRYPOINT [ "sh", "./start.sh" ]
 
