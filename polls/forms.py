@@ -1,14 +1,9 @@
-from typing import Any, Mapping, Optional, Type, Union
+
 from django import forms
-from django.forms.utils import ErrorList
 from django.urls import reverse
-from django.shortcuts import redirect
-from django.contrib.auth.hashers import Argon2PasswordHasher, make_password, check_password
 from django.conf import settings
-import logging
 
 import requests
-
 
 
 class RegisterForm(forms.Form):
