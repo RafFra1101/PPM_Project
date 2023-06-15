@@ -12,8 +12,8 @@ from .forms import newPollForm, editPollForm
 from datetime import datetime
 import requests, logging
 
-url_api = "http://127.0.0.1:8000/"
-url_base = "http://127.0.0.1:8000/"
+url_api = "https://ppmproject-production.up.railway.app/"
+url_base = "https://ppmproject-production.up.railway.app/"
 logging.getLogger().setLevel(logging.INFO)
 # Create your views here.
 class IndexView(generic.ListView):

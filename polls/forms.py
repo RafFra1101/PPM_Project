@@ -8,7 +8,7 @@ import logging
 
 import requests
 
-url_api = "http://localhost:8000"
+url_api = "https://ppmproject-production.up.railway.app/"
 
 class RegisterForm(forms.Form):
     username = forms.CharField()
