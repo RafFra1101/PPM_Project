@@ -10,6 +10,7 @@ coreschema==0.0.4
 defusedxml==0.7.1
 Django==4.2.1
 django-debug-toolbar==4.1.0
+django-environ==0.10.0
 djangorestframework==3.14.0
 drf-spectacular==0.26.2
 drf-yasg==1.21.5

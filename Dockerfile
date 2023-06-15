@@ -5,7 +5,7 @@ FROM python:3.9
 WORKDIR /app
 
 # Copia il codice del progetto nella directory di lavoro dell'immagine Docker
-COPY . /app
+COPY . .
 
 # Installa le dipendenze del progetto
 RUN pip install --no-cache-dir -r requirements.txt
