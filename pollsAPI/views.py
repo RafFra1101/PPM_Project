@@ -1,24 +1,21 @@
 
 # Create your views here.
-from django.contrib.auth.models import User, Group
-from rest_framework import viewsets, renderers, permissions, authentication, status, mixins
+from django.contrib.auth.models import User
+from rest_framework import viewsets, status, mixins
 from pollsAPI.serializers import *
 from .models import Poll, Choice
 from .permissions import PollsPermission, ChoicePermission, UsersPermission
-from django.http import JsonResponse
-from django.http.request import QueryDict
 from django.utils.decorators import method_decorator
-from rest_framework.decorators import action, api_view, permission_classes, authentication_classes
-from rest_framework.views import APIView
+from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from rest_framework.authentication import TokenAuthentication
 from drf_yasg import openapi as oa
 from drf_yasg.utils import swagger_auto_schema
-from django.contrib.auth.hashers import Argon2PasswordHasher, make_password, check_password
-import logging, requests, bcrypt
+from django.urls import reverse
+import bcrypt
 
-logging.getLogger().setLevel(logging.INFO)
+
 @method_decorator(name='retrieve', decorator=swagger_auto_schema(
     operation_description=ChoicePermission.get_permission_string('retrieve')
 ))
@@ -154,7 +151,6 @@ def login(request):
             login = bcrypt.checkpw(password.encode(), utente.password.encode())
             if login :
                 token, created = Token.objects.get_or_create(user=utente)
-                logging.info("Token: "+token.key)
                 return Response(data={'token':token.key, 'username': utente.username, 'email' : utente.email},status=status.HTTP_202_ACCEPTED)
             else:
                 return Response({'error': 'Login failed, wrong password'}, status=status.HTTP_400_BAD_REQUEST)
@@ -326,13 +322,10 @@ class PollViewSet(viewsets.ModelViewSet):
         poll = self.get_object()
         oldChoices = list(Choice.objects.filter(poll = poll))
         newChoices = request.data['choices']
-        logging.info(oldChoices)
-        logging.info(newChoices)
         if len(newChoices) == 0:
             for choice in oldChoices:
                 choice.delete()
         elif len(oldChoices) == 0:
-            logging.info("Scelte vecchie = 0")
             for choice in newChoices:
                 choice = Choice.objects.create(poll = poll, choice_text=choice['choice_text'], votes=choice['votes'])
         else:
@@ -370,7 +363,6 @@ def register(request):
             if serializer.is_valid():
                 user = serializer.create(serializer.validated_data)
                 token = Token.objects.create(user=user)
-                logging.info("Token" + token.key)
                 return Response(data={'token':token.key, 'username': user.username, 'email' : user.email},status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status = 400)  
         except Exception as e:

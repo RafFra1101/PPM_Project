@@ -1,11 +1,9 @@
-import sys
-from django.contrib.auth.models import User, Group
-from django.urls import reverse
+
+from django.contrib.auth.models import User
 from rest_framework import serializers
 from .models import Poll, Choice
-from django.utils import timezone
 from rest_framework.validators import UniqueValidator
-import logging, bcrypt
+import bcrypt
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     url = serializers.HyperlinkedIdentityField(

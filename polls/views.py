@@ -1,19 +1,15 @@
 
-from typing import Any
 from django.conf import settings
-from django.db.models.query import QuerySet
-from django.shortcuts import render, get_object_or_404, redirect
-from django.http import HttpResponse, HttpResponseRedirect
+from django.shortcuts import render, redirect
+from django.http import HttpResponseRedirect
 from django.views import generic
-from django.urls import reverse, get_resolver
-from django.utils import timezone
+from django.urls import reverse
 from django.contrib import messages
-from django.contrib.auth import login
 from .forms import newPollForm, editPollForm
 from datetime import datetime
-import requests, logging
+import requests
 
-logging.getLogger().setLevel(logging.INFO)
+
 # Create your views here.
 class IndexView(generic.ListView):
     template_name = "polls/index.html"
@@ -41,8 +37,6 @@ def getChoices(self):
         
         if not self.request.session.get('username'):
             return{'voted':True, 'id': data['url'][-2]}
-        logging.info('provaUsers' in data['users'])
-        logging.info(data['users'])
         if data['users'] and self.request.session['username'] in data['users']:
             
             messages.info(self.request, "L'utente ha già votato")
@@ -206,11 +200,9 @@ class newPollView(generic.FormView):
         }
         out = requests.post(settings.URL+reverse('poll-list'), request_data, headers=headers)
         if out.status_code == 201:
-            logging.info("Sondaggio creato")
             out = out.json()
             id = out['id']
             if len(choices) > 0:
-                logging.info("Scelte > 0")
                 outChoices = requests.post(settings.URL+reverse('poll-choices', args=[id]), json={'choices' : choices}, headers=headers)
                 if outChoices.status_code != 201:
                     messages.warning(self.request, "Scelte non aggiunte")
