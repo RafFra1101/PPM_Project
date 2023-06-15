@@ -8,7 +8,7 @@ WORKDIR /app
 COPY . .
 
 # Installa le dipendenze del progetto
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install -r requirements.txt
 
 
 ENTRYPOINT [ "sh", "./start.sh" ]
