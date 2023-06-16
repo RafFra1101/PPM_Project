@@ -7,7 +7,7 @@ from django.urls import reverse
 from django.contrib import messages
 from .forms import newPollForm, editPollForm
 from datetime import datetime
-import requests, logging
+import requests
 
 class IndexView(generic.ListView):
     template_name = "polls/index.html"
