@@ -119,7 +119,7 @@ class ChoiceViewSet(viewsets.ModelViewSet):
     def vote(self, request, pk):
         choice = self.get_object()
         user = request.user
-        if choice.users.filter(username = user.username).exists():         
+        if Poll.objects.filter(choice__users__username=user.username, id = choice.poll.id).exists():   
             return Response({'info' : 'L\'utente ha già votato'},status=status.HTTP_302_FOUND)
         else:
             choice.votes += 1
@@ -413,7 +413,7 @@ class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, mixins.Destr
                          responses={200: oa.Response('Schema valori di ritorno', PollSerializer(many=True))})
     @action(methods = ["get"], detail = True)
     def votedPolls(self, request, username=None):
-        polls = Poll.objects.filter(users__username = username)
+        polls = Poll.objects.filter(choice__users__username=username)
         serializer = PollSerializer(polls, many=True, context={'request':request})
         return Response(serializer.data)
         
