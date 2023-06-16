@@ -1,6 +1,4 @@
 from rest_framework import permissions
-from .models import Poll
-import logging
 class PollsPermission(permissions.BasePermission):
     owner = ['update', 'partial_update', 'destroy', 'choices']
     generale = ['list', 'retrieve']

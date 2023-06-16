@@ -32,10 +32,9 @@ env = environ.Env(
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env("SECRET_KEY")
-#SECRET_KEY = "django-insecure-#tl91o@gtyc!q1^ke(9)_#r5q23(hg17n%wf+&jrvf_p==hy$*"
 URL = "https://ppmproject-production.up.railway.app"
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['*']
 CSRF_TRUSTED_ORIGINS=['*']
@@ -93,14 +92,6 @@ WSGI_APPLICATION = 'PPM_Project.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-"""
-DATABASES = {
-    'default': {
-        'ENGINE' : 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),       
-    }
-}
-"""
 DATABASES = {
     'default' : {
         'ENGINE': 'django.db.backends.postgresql',

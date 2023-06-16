@@ -13,7 +13,7 @@ from rest_framework.authentication import TokenAuthentication
 from drf_yasg import openapi as oa
 from drf_yasg.utils import swagger_auto_schema
 from django.urls import reverse
-import bcrypt, logging
+import bcrypt
 
 
 @method_decorator(name='retrieve', decorator=swagger_auto_schema(
@@ -323,7 +323,6 @@ class PollViewSet(viewsets.ModelViewSet):
         poll = self.get_object()
         oldChoices = list(Choice.objects.filter(poll = poll))
         newChoices = request.data['choices']
-        logging.warning(newChoices)
         if len(newChoices) == 0:
             for choice in oldChoices:
                 choice.delete()
