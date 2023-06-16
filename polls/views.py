@@ -136,12 +136,13 @@ class VotedPollsView(generic.ListView):
                 headers = {"Authorization": "Token "+self.request.session['token']}
             url = settings.URL+reverse('user-votedPolls', args=[username])
             response = requests.get(url, headers=headers)
-            data = response.json()
-            for x in data:
-                output.append({
-                    'id' : x['url'].split('/', -1)[-2],
-                    'question_text': x['question_text'],
-                })
+            if(response.status_code < 400):
+                data = response.json()
+                for x in data:
+                    output.append({
+                        'id' : x['url'].split('/', -1)[-2],
+                        'question_text': x['question_text'],
+                    })
         return output
     
 class OwnPollsView(generic.ListView):
