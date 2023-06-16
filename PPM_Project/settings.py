@@ -37,7 +37,7 @@ URL = "https://ppmproject-production.up.railway.app"
 DEBUG = False
 
 ALLOWED_HOSTS = ['*']
-CSRF_TRUSTED_ORIGINS=['*']
+CSRF_TRUSTED_ORIGINS=['*', URL]
 
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
