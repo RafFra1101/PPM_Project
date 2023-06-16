@@ -66,7 +66,8 @@ class ChoiceViewSet(viewsets.ModelViewSet):
                 missingUsers.append(username)
         if len(missingUsers) > 0:
             out['missingUsers'] = missingUsers
-        if not request.data.get('votes'): request.data['votes'] = 0
+        if not request.data.get('votes') or request.data['votes']<0: 
+            request.data['votes'] = 0
         serializer = ChoiceSerializer(data=request.data, context = {'request': request})
         if serializer.is_valid():
             choice = serializer.create(serializer.validated_data)
@@ -327,18 +328,19 @@ class PollViewSet(viewsets.ModelViewSet):
                 choice.delete()
         elif len(oldChoices) == 0:
             for choice in newChoices:
+                if choice['votes'] < 0: choice['votes'] = 0
                 choice = Choice.objects.create(poll = poll, choice_text=choice['choice_text'], votes=choice['votes'])
         else:
             i = 0
             for i in range(i, min(len(oldChoices), len(newChoices))):
                 oldChoices[i].choice_text = newChoices[i]['choice_text']
-                oldChoices[i].votes = newChoices[i]['votes']
+                oldChoices[i].votes = newChoices[i]['votes'] if newChoices[i]['votes'] >= 0 else 0
                 oldChoices[i].save()
             i += 1
             for x in range(i, len(oldChoices)):
                 oldChoices[x].delete()
             for x in range(i, len(newChoices)):
-                Choice.objects.create(poll = poll, choice_text=newChoices[x]['choice_text'], votes=newChoices[x]['votes'])
+                Choice.objects.create(poll = poll, choice_text=newChoices[x]['choice_text'], votes=newChoices[x]['votes'] if newChoices[x]['votes'] >= 0 else 0)
         return Response({'success' : 'Scelte inserite correttamente'},status=status.HTTP_201_CREATED)
 
 
