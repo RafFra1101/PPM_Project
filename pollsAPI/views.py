@@ -405,7 +405,7 @@ class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, mixins.Destr
                          responses={200: oa.Response('Schema valori di ritorno', PollSerializer(many=True))})
     @action(methods = ["get"], detail = True)
     def ownPolls(self, request, username=None):
-        polls = Poll.objects.filter(owner = username)
+        polls = Poll.objects.filter(owner = username).order_by('-pub_date')
         serializer = PollSerializer(polls, many=True, context={'request':request})
         return Response(serializer.data)
     
@@ -413,7 +413,7 @@ class UserViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, mixins.Destr
                          responses={200: oa.Response('Schema valori di ritorno', PollSerializer(many=True))})
     @action(methods = ["get"], detail = True)
     def votedPolls(self, request, username=None):
-        polls = Poll.objects.filter(choice__users__username=username)
+        polls = Poll.objects.filter(choice__users__username=username).order_by('-pub_date')
         serializer = PollSerializer(polls, many=True, context={'request':request})
         return Response(serializer.data)
         

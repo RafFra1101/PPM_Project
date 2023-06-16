@@ -17,3 +17,4 @@
         - Effettuando l'accesso attraverso login o registrazione è possibile votare i sondaggi (un solo voto per utente per ogni sondaggio) o accedere al proprio profilo
         - Dal proprio profilo è possibile visualizzare le proprie informazioni, i sondaggi creati e quelli votati
         - Dai sondaggi creati è possibile modificare alcuni parametri dei sondaggi (domanda, proprietario e scelte), eliminare sondaggi o crearne di nuovi (inserendo gli stessi parametri disponibili nella modifica)
+- Il database postgresSQL è stato inizializzato con un utente (username = admin, password = admin, email = admin@email.com) per poter aggiungere dei dati iniziali
