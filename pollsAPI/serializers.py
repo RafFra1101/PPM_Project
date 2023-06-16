@@ -47,7 +47,6 @@ class PollSerializer(serializers.HyperlinkedModelSerializer):
         fields = ['url', 'owner', 'question_text', 'pub_date']
 
     def partial_update(self, instance, validated_data):
-        # Aggiorna solo i campi presenti nei dati validati
         for field, value in validated_data.items():
             setattr(instance, field, value)
 

@@ -13,7 +13,7 @@ from rest_framework.authentication import TokenAuthentication
 from drf_yasg import openapi as oa
 from drf_yasg.utils import swagger_auto_schema
 from django.urls import reverse
-import bcrypt
+import bcrypt, logging
 
 
 @method_decorator(name='retrieve', decorator=swagger_auto_schema(
@@ -66,8 +66,9 @@ class ChoiceViewSet(viewsets.ModelViewSet):
                 missingUsers.append(username)
         if len(missingUsers) > 0:
             out['missingUsers'] = missingUsers
-        if not request.data.get('votes') or request.data['votes']<0: 
+        if not request.data.get('votes'): 
             request.data['votes'] = 0
+        request.data['votes'] = max(int(request.data['votes']), 0)
         serializer = ChoiceSerializer(data=request.data, context = {'request': request})
         if serializer.is_valid():
             choice = serializer.create(serializer.validated_data)
@@ -117,7 +118,6 @@ class ChoiceViewSet(viewsets.ModelViewSet):
     @action(methods = ["get"], detail = True)
     def vote(self, request, pk):
         choice = self.get_object()
-        poll = choice.poll
         user = request.user
         if choice.users.filter(username = user.username).exists():         
             return Response({'info' : 'L\'utente ha già votato'},status=status.HTTP_302_FOUND)
@@ -315,7 +315,7 @@ class PollViewSet(viewsets.ModelViewSet):
                 'choice_text' : oa.Schema(type=oa.TYPE_STRING),
                 'votes' : oa.Schema(type=oa.TYPE_INTEGER),
                 'users': oa.Schema(type=oa.TYPE_ARRAY, items = oa.Schema(type=oa.TYPE_STRING), description="username degli utenti che hanno già votato")
-            }, required=['scelte']))
+            }, required=['choices']))
         }
     ), responses={201: "success : Scelte inserite correttamente"})
     @action(methods = ["post"], detail = True)
@@ -323,24 +323,24 @@ class PollViewSet(viewsets.ModelViewSet):
         poll = self.get_object()
         oldChoices = list(Choice.objects.filter(poll = poll))
         newChoices = request.data['choices']
+        logging.warning(newChoices)
         if len(newChoices) == 0:
             for choice in oldChoices:
                 choice.delete()
         elif len(oldChoices) == 0:
             for choice in newChoices:
-                if choice['votes'] < 0: choice['votes'] = 0
-                choice = Choice.objects.create(poll = poll, choice_text=choice['choice_text'], votes=choice['votes'])
+                choice = Choice.objects.create(poll = poll, choice_text=choice['choice_text'], votes= max(int(choice['votes']), 0))
         else:
             i = 0
             for i in range(i, min(len(oldChoices), len(newChoices))):
                 oldChoices[i].choice_text = newChoices[i]['choice_text']
-                oldChoices[i].votes = newChoices[i]['votes'] if newChoices[i]['votes'] >= 0 else 0
+                oldChoices[i].votes = max(int(newChoices[i]['votes']), 0)
                 oldChoices[i].save()
             i += 1
             for x in range(i, len(oldChoices)):
                 oldChoices[x].delete()
             for x in range(i, len(newChoices)):
-                Choice.objects.create(poll = poll, choice_text=newChoices[x]['choice_text'], votes=newChoices[x]['votes'] if newChoices[x]['votes'] >= 0 else 0)
+                Choice.objects.create(poll = poll, choice_text=newChoices[x]['choice_text'], votes=max(int(newChoices[x]['votes']), 0))
         return Response({'success' : 'Scelte inserite correttamente'},status=status.HTTP_201_CREATED)
 
 

@@ -18,7 +18,7 @@ class RegisterForm(forms.Form):
             "email" : self.cleaned_data['email'],
             "password" : self.cleaned_data['password']
         }
-        response = requests.post(settings.URL+reverse('APIregister'), data)  # Sostituisci l'URL con l'API reale che desideri chiamare
+        response = requests.post(settings.URL+reverse('APIregister'), data)
         data = response.json()
         if response.status_code == 400:
             if 'username' in data:

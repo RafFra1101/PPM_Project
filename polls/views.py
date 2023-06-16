@@ -7,10 +7,8 @@ from django.urls import reverse
 from django.contrib import messages
 from .forms import newPollForm, editPollForm
 from datetime import datetime
-import requests
+import requests, logging
 
-
-# Create your views here.
 class IndexView(generic.ListView):
     template_name = "polls/index.html"
     context_object_name = "latest_poll_list"
